@@ -16,8 +16,18 @@ RUN npm ci
 # Copy frontend source code
 COPY frontend ./frontend
 
-# Setup environment file (use example as template)
-RUN cp frontend/src/app/environments/environment.example.ts frontend/src/app/environments/environment.ts
+# Production backend origin + auth token, baked in at build time (Angular has no runtime env vars)
+ARG BACKEND_URL=http://localhost:3000
+ARG AUTH_TOKEN=
+ARG FRONTEND_DEBUG=false
+
+# Setup environment file (use example as template), then inject production values
+RUN cp frontend/src/app/environments/environment.example.ts frontend/src/app/environments/environment.ts && \
+    sed -i \
+      -e "s|backendUrl: '.*'|backendUrl: '${BACKEND_URL}'|" \
+      -e "s|authToken: '.*'|authToken: '${AUTH_TOKEN}'|" \
+      -e "s|debug: .*|debug: ${FRONTEND_DEBUG},|" \
+      frontend/src/app/environments/environment.ts
 
 # Build the application
 WORKDIR /app/frontend
