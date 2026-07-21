@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { JuryComponent } from './jury';
 import { LiftService } from '../../services/lift.service';
+import { AudioBeepService } from '../../services/audio-beep.service';
 import { LiftStateType, Decision, RefereePosition, TimerStatus } from '../../models/lift.model';
 import { signal, WritableSignal } from '@angular/core';
 import { LiftState } from '../../models/lift.model';
@@ -9,6 +10,7 @@ describe('JuryComponent', () => {
   let component: JuryComponent;
   let fixture: ComponentFixture<JuryComponent>;
   let mockLiftService: Partial<LiftService>;
+  let mockAudioBeep: { unlock: ReturnType<typeof vi.fn> };
   let stateSignal: WritableSignal<LiftState | null>;
 
   beforeEach(async () => {
@@ -23,9 +25,14 @@ describe('JuryComponent', () => {
       stopTimer: vi.fn(),
     };
 
+    mockAudioBeep = { unlock: vi.fn() };
+
     await TestBed.configureTestingModule({
       imports: [JuryComponent],
-      providers: [{ provide: LiftService, useValue: mockLiftService }],
+      providers: [
+        { provide: LiftService, useValue: mockLiftService },
+        { provide: AudioBeepService, useValue: mockAudioBeep },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(JuryComponent);
@@ -113,6 +120,11 @@ describe('JuryComponent', () => {
   it('should call startTimer service method', () => {
     component.startTimer();
     expect(mockLiftService.startTimer).toHaveBeenCalled();
+  });
+
+  it('should unlock audio playback when starting the timer', () => {
+    component.startTimer();
+    expect(mockAudioBeep.unlock).toHaveBeenCalled();
   });
 
   it('should call stopTimer service method', () => {
