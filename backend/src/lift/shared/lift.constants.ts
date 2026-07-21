@@ -8,7 +8,12 @@ export const EVENT_TYPES = {
   RESET_ALL: 'RESET_ALL',
   JURY_OVERRULE: 'JURY_OVERRULE',
   CLEAR_JURY_OVERRULE: 'CLEAR_JURY_OVERRULE',
+  START_TIMER: 'START_TIMER',
+  STOP_TIMER: 'STOP_TIMER',
 } as const;
+
+/** IPF rule: a lifter has 1 minute to start their lift once the bar is loaded. */
+export const LIFT_TIMER_DURATION_MS = 60_000;
 
 // Enums for type safety
 export enum RefereePosition {

@@ -1,5 +1,54 @@
 /* Jury Page Specific Styles */
 
+/* Lift Timer */
+.timer-section {
+  padding: 1.25rem 1rem;
+  background: #111;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
+.jury-timer {
+  font-size: 3rem;
+}
+
+.timer-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  width: 100%;
+  max-width: 500px;
+}
+
+.timer-btn {
+  height: 70px;
+  font-size: 1.1rem;
+}
+
+.timer-start-btn {
+  background: linear-gradient(135deg, #28a745 0%, #1e7e34 100%);
+  color: #fff;
+}
+
+.timer-start-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1e7e34 0%, #19692c 100%);
+  box-shadow: 0 8px 32px rgba(40, 167, 69, 0.5);
+  transform: translateY(-2px) translateZ(0);
+}
+
+.timer-stop-btn {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+  color: #fff;
+}
+
+.timer-stop-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5a6268 0%, #495057 100%);
+  box-shadow: 0 8px 32px rgba(108, 117, 125, 0.5);
+  transform: translateY(-2px) translateZ(0);
+}
+
 /* Jury overrule active state */
 .jury-overrule-active {
   background: linear-gradient(135deg, #ff6b6b 0%, #ff4757 100%);

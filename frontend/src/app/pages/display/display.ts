@@ -1,11 +1,12 @@
 import { Component, OnInit, OnDestroy, computed, effect, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LiftService } from '../../services/lift.service';
-import { RefereePosition, Decision, LiftStateType } from '../../models/lift.model';
+import { RefereePosition, Decision, LiftStateType, TimerStatus } from '../../models/lift.model';
+import { LiftTimerComponent } from '../../components/lift-timer/lift-timer';
 
 @Component({
   selector: 'app-display',
-  imports: [CommonModule],
+  imports: [CommonModule, LiftTimerComponent],
   templateUrl: './display.html',
   styleUrl: './display.css',
 })
@@ -28,6 +29,12 @@ export class DisplayComponent implements OnInit, OnDestroy {
 
   /** Whether the display is not connected to the backend. */
   isDisconnected = computed(() => !this.liftService.state());
+
+  /** The current lift timer, started by the jury/table once the bar is loaded. */
+  timer = computed(() => this.liftService.state()?.context.timer);
+
+  /** Whether the lift timer is actively counting down. */
+  isTimerRunning = computed(() => this.timer()?.status === TimerStatus.RUNNING);
 
   constructor() {
     // Use effect to handle state transitions

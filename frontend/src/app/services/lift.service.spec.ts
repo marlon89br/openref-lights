@@ -144,6 +144,16 @@ describe('LiftService', () => {
         decision: Decision.RED,
       });
     });
+
+    it('should emit startTimer event', () => {
+      service.startTimer();
+      expect(mockSocket.emit).toHaveBeenCalledWith('startTimer');
+    });
+
+    it('should emit stopTimer event', () => {
+      service.stopTimer();
+      expect(mockSocket.emit).toHaveBeenCalledWith('stopTimer');
+    });
   });
 
   describe('Socket Event Handlers', () => {

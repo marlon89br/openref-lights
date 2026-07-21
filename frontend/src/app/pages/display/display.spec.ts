@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DisplayComponent } from './display';
 import { LiftService } from '../../services/lift.service';
-import { LiftStateType, Decision, RefereePosition, LiftState } from '../../models/lift.model';
+import { LiftStateType, Decision, RefereePosition, LiftState, TimerStatus } from '../../models/lift.model';
 import { signal, WritableSignal } from '@angular/core';
 
 describe('DisplayComponent', () => {
@@ -101,5 +101,40 @@ describe('DisplayComponent', () => {
     component.ngOnInit();
     component.ngOnDestroy();
     expect(mockLiftService.disconnect).toHaveBeenCalled();
+  });
+
+  it('should compute isTimerRunning correctly when timer is running', () => {
+    stateSignal.set({
+      state: LiftStateType.AWAITING_DECISIONS,
+      context: {
+        decisions: [],
+        connectedReferees: [],
+        timer: { status: TimerStatus.RUNNING, durationMs: 60_000, endsAt: Date.now() + 60_000 },
+      },
+    });
+
+    expect(component.isTimerRunning()).toBe(true);
+  });
+
+  it('should compute isTimerRunning correctly when timer is stopped', () => {
+    stateSignal.set({
+      state: LiftStateType.AWAITING_DECISIONS,
+      context: {
+        decisions: [],
+        connectedReferees: [],
+        timer: { status: TimerStatus.STOPPED, durationMs: 60_000 },
+      },
+    });
+
+    expect(component.isTimerRunning()).toBe(false);
+  });
+
+  it('should compute isTimerRunning as false when no timer is present', () => {
+    stateSignal.set({
+      state: LiftStateType.AWAITING_DECISIONS,
+      context: { decisions: [], connectedReferees: [] },
+    });
+
+    expect(component.isTimerRunning()).toBe(false);
   });
 });

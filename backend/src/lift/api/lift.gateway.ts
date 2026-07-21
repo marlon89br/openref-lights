@@ -217,6 +217,20 @@ export class LiftGateway implements OnGatewayConnection, OnGatewayDisconnect, On
     return { success: true };
   }
 
+  /** Handle 'startTimer' event when the jury/table starts the 1-minute lift timer. */
+  @SubscribeMessage('startTimer')
+  async handleStartTimer() {
+    this.liftService.startTimer();
+    return { success: true };
+  }
+
+  /** Handle 'stopTimer' event when the jury/table stops/resets the lift timer. */
+  @SubscribeMessage('stopTimer')
+  async handleStopTimer() {
+    this.liftService.stopTimer();
+    return { success: true };
+  }
+
   /**
    * Broadcast state update to all connected clients.
    * Called automatically after every state change via subscription.
@@ -242,6 +256,7 @@ export class LiftGateway implements OnGatewayConnection, OnGatewayDisconnect, On
         })),
         connectedReferees: Array.from(snapshot.context.connectedReferees),
         juryOverrule: snapshot.context.juryOverrule,
+        timer: snapshot.context.timer,
       },
     };
   }

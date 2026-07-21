@@ -118,6 +118,16 @@ export class LiftService {
     this.socket?.emit('clearJuryOverrule');
   }
 
+  startTimer() {
+    this.debug('Start lift timer');
+    this.socket?.emit('startTimer');
+  }
+
+  stopTimer() {
+    this.debug('Stop lift timer');
+    this.socket?.emit('stopTimer');
+  }
+
   getCurrentState(): LiftState | null {
     return this._state();
   }

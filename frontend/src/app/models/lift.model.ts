@@ -19,6 +19,18 @@ export enum LiftStateType {
   JURY_OVERRULE = 'juryOverrule',
 }
 
+export enum TimerStatus {
+  STOPPED = 'stopped',
+  RUNNING = 'running',
+}
+
+export interface TimerState {
+  status: TimerStatus;
+  durationMs: number;
+  /** Epoch ms when the timer will expire. Only set while running. */
+  endsAt?: number;
+}
+
 export interface RefereeDecision {
   position: RefereePosition;
   decision: Decision;
@@ -35,5 +47,6 @@ export interface LiftState {
     decisions: RefereeDecision[];
     connectedReferees: RefereePosition[];
     juryOverrule?: JuryOverrule;
+    timer?: TimerState;
   };
 }

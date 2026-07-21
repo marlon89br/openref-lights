@@ -1,6 +1,12 @@
 <div class="display-container">
-  <div class="display-lights-wrapper">
-    <div class="display-lights">
+  @if (isTimerRunning()) {
+    <div class="display-timer-wrapper">
+      <app-lift-timer [timer]="timer()" class="display-timer"></app-lift-timer>
+    </div>
+  }
+
+  <div class="display-lights-wrapper" [class.display-lights-wrapper-compact]="isTimerRunning()">
+    <div class="display-lights" [class.display-lights-compact]="isTimerRunning()">
       @for (position of refereePositions; track position) {
         @let decision = getDisplayDecision(position);
         <div class="display-light-column">

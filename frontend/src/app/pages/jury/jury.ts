@@ -1,7 +1,8 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LiftService } from '../../services/lift.service';
-import { RefereePosition, Decision } from '../../models/lift.model';
+import { RefereePosition, Decision, TimerStatus } from '../../models/lift.model';
+import { LiftTimerComponent } from '../../components/lift-timer/lift-timer';
 import { interval } from 'rxjs';
 import { takeWhile, tap, finalize } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -14,7 +15,7 @@ const COUNTDOWN_TICK_MS = 100;
 
 @Component({
   selector: 'app-jury',
-  imports: [CommonModule],
+  imports: [CommonModule, LiftTimerComponent],
   templateUrl: './jury.html',
   styleUrl: './jury.css',
 })
@@ -34,6 +35,10 @@ export class JuryComponent implements OnInit, OnDestroy {
 
   // Computed signal for jury overrule
   hasJuryOverrule = computed(() => !!this.liftService.state()?.context.juryOverrule);
+
+  // Lift timer
+  timer = computed(() => this.liftService.state()?.context.timer);
+  isTimerRunning = computed(() => this.timer()?.status === TimerStatus.RUNNING);
 
   currentDecision = computed(() => {
     return this.liftService.state()?.context.juryOverrule?.decision || null;
@@ -96,6 +101,14 @@ export class JuryComponent implements OnInit, OnDestroy {
 
   clearJuryOverrule() {
     this.liftService.clearJuryOverrule();
+  }
+
+  startTimer() {
+    this.liftService.startTimer();
+  }
+
+  stopTimer() {
+    this.liftService.stopTimer();
   }
 
   getDecisionClass(position: RefereePosition): string {
