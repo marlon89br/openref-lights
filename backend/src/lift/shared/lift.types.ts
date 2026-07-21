@@ -9,11 +9,26 @@ export enum LiftState {
   JURY_OVERRULE = 'juryOverrule',
 }
 
+/** Possible states of the lift timer. */
+export enum TimerStatus {
+  STOPPED = 'stopped',
+  RUNNING = 'running',
+}
+
+/** Timer that tracks the 1-minute window a lifter has to start their lift. */
+export interface TimerState {
+  status: TimerStatus;
+  durationMs: number;
+  /** Epoch ms when the timer will expire. Only set while running. */
+  endsAt?: number;
+}
+
 /** Context data maintained throughout the lift lifecycle. */
 export interface LiftContext {
   decisions: Map<RefereePosition, Decision>;
   connectedReferees: Set<RefereePosition>;
   juryOverrule?: { decision: Decision; timestamp: number };
+  timer: TimerState;
 }
 
 /** Immutable snapshot of state machine state and context. */
@@ -42,4 +57,6 @@ export type LiftEvent =
   | { type: typeof EVENT_TYPES.REVEAL_DECISIONS }
   | { type: typeof EVENT_TYPES.RESET_ALL }
   | { type: typeof EVENT_TYPES.JURY_OVERRULE; decision: Decision }
-  | { type: typeof EVENT_TYPES.CLEAR_JURY_OVERRULE };
+  | { type: typeof EVENT_TYPES.CLEAR_JURY_OVERRULE }
+  | { type: typeof EVENT_TYPES.START_TIMER }
+  | { type: typeof EVENT_TYPES.STOP_TIMER };

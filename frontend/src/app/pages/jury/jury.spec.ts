@@ -1,7 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { JuryComponent } from './jury';
 import { LiftService } from '../../services/lift.service';
-import { LiftStateType, Decision, RefereePosition } from '../../models/lift.model';
+import { LiftStateType, Decision, RefereePosition, TimerStatus } from '../../models/lift.model';
 import { signal, WritableSignal } from '@angular/core';
 import { LiftState } from '../../models/lift.model';
 
@@ -19,6 +19,8 @@ describe('JuryComponent', () => {
       connect: vi.fn(),
       disconnect: vi.fn(),
       juryOverrule: vi.fn(),
+      startTimer: vi.fn(),
+      stopTimer: vi.fn(),
     };
 
     await TestBed.configureTestingModule({
@@ -106,5 +108,41 @@ describe('JuryComponent', () => {
   it('should call juryOverrule service method', () => {
     component.juryOverrule(Decision.BLUE);
     expect(component.isSubmitting()).toBe(true);
+  });
+
+  it('should call startTimer service method', () => {
+    component.startTimer();
+    expect(mockLiftService.startTimer).toHaveBeenCalled();
+  });
+
+  it('should call stopTimer service method', () => {
+    component.stopTimer();
+    expect(mockLiftService.stopTimer).toHaveBeenCalled();
+  });
+
+  it('should compute isTimerRunning correctly when timer is running', () => {
+    stateSignal.set({
+      state: LiftStateType.AWAITING_DECISIONS,
+      context: {
+        decisions: [],
+        connectedReferees: [],
+        timer: { status: TimerStatus.RUNNING, durationMs: 60_000, endsAt: Date.now() + 60_000 },
+      },
+    });
+
+    expect(component.isTimerRunning()).toBe(true);
+  });
+
+  it('should compute isTimerRunning correctly when timer is stopped', () => {
+    stateSignal.set({
+      state: LiftStateType.AWAITING_DECISIONS,
+      context: {
+        decisions: [],
+        connectedReferees: [],
+        timer: { status: TimerStatus.STOPPED, durationMs: 60_000 },
+      },
+    });
+
+    expect(component.isTimerRunning()).toBe(false);
   });
 });

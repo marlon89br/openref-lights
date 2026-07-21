@@ -218,6 +218,26 @@ describe('LiftGateway', () => {
     });
   });
 
+  describe('handleStartTimer', () => {
+    it('should start the lift timer', async () => {
+      const result = await gateway.handleStartTimer();
+
+      expect(result.success).toBe(true);
+      expect(gateway.server.emit).toHaveBeenCalledWith('stateUpdate', expect.any(Object));
+      expect(service.getState().context.timer.status).toBe('running');
+    });
+  });
+
+  describe('handleStopTimer', () => {
+    it('should stop and reset the lift timer', async () => {
+      await gateway.handleStartTimer();
+      const result = await gateway.handleStopTimer();
+
+      expect(result.success).toBe(true);
+      expect(service.getState().context.timer.status).toBe('stopped');
+    });
+  });
+
   describe('handleDisconnect', () => {
     it('should remove referee on disconnect', () => {
       gateway['clients'].set(mockClient.id!, { position: RefereePosition.LEFT });

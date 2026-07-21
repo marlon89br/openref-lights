@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LiftService } from './lift.service';
-import { LiftState } from '../shared/lift.types';
+import { LiftState, TimerStatus } from '../shared/lift.types';
 import { RefereePosition, Decision } from '../shared/lift.constants';
 
 describe('LiftService', () => {
@@ -117,6 +117,25 @@ describe('LiftService', () => {
       const state = service.getState();
       expect(state.state).toBe(LiftState.AWAITING_DECISIONS);
       expect(state.context.juryOverrule).toBeUndefined();
+    });
+  });
+
+  describe('startTimer/stopTimer', () => {
+    it('should start the lift timer', () => {
+      service.startTimer();
+
+      const state = service.getState();
+      expect(state.context.timer.status).toBe(TimerStatus.RUNNING);
+      expect(state.context.timer.endsAt).toBeDefined();
+    });
+
+    it('should stop and reset the lift timer', () => {
+      service.startTimer();
+      service.stopTimer();
+
+      const state = service.getState();
+      expect(state.context.timer.status).toBe(TimerStatus.STOPPED);
+      expect(state.context.timer.endsAt).toBeUndefined();
     });
   });
 

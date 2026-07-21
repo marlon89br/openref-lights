@@ -5,6 +5,19 @@
       <h1 class="page-title">Jury Panel</h1>
     </div>
 
+    <!-- Lift Timer -->
+    <div class="timer-section">
+      <app-lift-timer [timer]="timer()" class="jury-timer"></app-lift-timer>
+      <div class="timer-controls">
+        <button class="control-btn timer-btn timer-start-btn" (click)="startTimer()">
+          {{ isTimerRunning() ? 'RESTART TIMER' : 'START TIMER' }}
+        </button>
+        <button class="control-btn timer-btn timer-stop-btn" (click)="stopTimer()" [disabled]="!isTimerRunning()">
+          STOP TIMER
+        </button>
+      </div>
+    </div>
+
     <!-- Jury Overrule Message -->
     @if (isSubmitting()) {
       <div class="decision-section fade-in">

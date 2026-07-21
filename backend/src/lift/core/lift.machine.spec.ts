@@ -1,6 +1,6 @@
 import { LiftStateMachine } from './lift.machine';
-import { LiftState } from '../shared/lift.types';
-import { EVENT_TYPES, RefereePosition, Decision } from '../shared/lift.constants';
+import { LiftState, TimerStatus } from '../shared/lift.types';
+import { EVENT_TYPES, RefereePosition, Decision, LIFT_TIMER_DURATION_MS } from '../shared/lift.constants';
 
 describe('LiftMachine', () => {
   let machine: LiftStateMachine;
@@ -19,6 +19,13 @@ describe('LiftMachine', () => {
       expect(snapshot.context.decisions.size).toBe(0);
       expect(snapshot.context.connectedReferees.size).toBe(0);
       expect(snapshot.context.juryOverrule).toBeUndefined();
+    });
+
+    it('should start with a stopped timer at full duration', () => {
+      const snapshot = machine.getSnapshot();
+      expect(snapshot.context.timer.status).toBe(TimerStatus.STOPPED);
+      expect(snapshot.context.timer.durationMs).toBe(LIFT_TIMER_DURATION_MS);
+      expect(snapshot.context.timer.endsAt).toBeUndefined();
     });
   });
 
@@ -323,6 +330,66 @@ describe('LiftMachine', () => {
 
       const snapshot = machine.getSnapshot();
       expect(snapshot.context.juryOverrule).toEqual(juryOverrule);
+    });
+  });
+
+  describe('Lift Timer', () => {
+    it('should start the timer with a full duration and an end timestamp', () => {
+      const before = Date.now();
+      machine.send({ type: EVENT_TYPES.START_TIMER });
+      const after = Date.now();
+
+      const timer = machine.getSnapshot().context.timer;
+      expect(timer.status).toBe(TimerStatus.RUNNING);
+      expect(timer.durationMs).toBe(LIFT_TIMER_DURATION_MS);
+      expect(timer.endsAt).toBeGreaterThanOrEqual(before + LIFT_TIMER_DURATION_MS);
+      expect(timer.endsAt).toBeLessThanOrEqual(after + LIFT_TIMER_DURATION_MS);
+    });
+
+    it('should restart the timer with a fresh end timestamp when started again', () => {
+      machine.send({ type: EVENT_TYPES.START_TIMER });
+      const firstEndsAt = machine.getSnapshot().context.timer.endsAt;
+
+      machine.send({ type: EVENT_TYPES.START_TIMER });
+      const secondEndsAt = machine.getSnapshot().context.timer.endsAt;
+
+      expect(secondEndsAt).toBeGreaterThanOrEqual(firstEndsAt!);
+    });
+
+    it('should stop the timer and reset it to a full minute', () => {
+      machine.send({ type: EVENT_TYPES.START_TIMER });
+      machine.send({ type: EVENT_TYPES.STOP_TIMER });
+
+      const timer = machine.getSnapshot().context.timer;
+      expect(timer.status).toBe(TimerStatus.STOPPED);
+      expect(timer.durationMs).toBe(LIFT_TIMER_DURATION_MS);
+      expect(timer.endsAt).toBeUndefined();
+    });
+
+    it('should stop and reset the timer once all referees vote', () => {
+      machine.send({ type: EVENT_TYPES.START_TIMER });
+
+      machine.send({ type: EVENT_TYPES.DECISION, position: RefereePosition.LEFT, decision: Decision.WHITE });
+      expect(machine.getSnapshot().context.timer.status).toBe(TimerStatus.RUNNING);
+
+      machine.send({ type: EVENT_TYPES.DECISION, position: RefereePosition.CHIEF, decision: Decision.WHITE });
+      expect(machine.getSnapshot().context.timer.status).toBe(TimerStatus.RUNNING);
+
+      machine.send({ type: EVENT_TYPES.DECISION, position: RefereePosition.RIGHT, decision: Decision.WHITE });
+
+      const timer = machine.getSnapshot().context.timer;
+      expect(machine.getSnapshot().state).toBe(LiftState.READY_TO_REVEAL);
+      expect(timer.status).toBe(TimerStatus.STOPPED);
+      expect(timer.endsAt).toBeUndefined();
+    });
+
+    it('should stop and reset the timer when jury overrules mid-vote', () => {
+      machine.send({ type: EVENT_TYPES.START_TIMER });
+      machine.send({ type: EVENT_TYPES.JURY_OVERRULE, decision: Decision.RED });
+
+      const timer = machine.getSnapshot().context.timer;
+      expect(timer.status).toBe(TimerStatus.STOPPED);
+      expect(timer.endsAt).toBeUndefined();
     });
   });
 });

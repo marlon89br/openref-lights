@@ -76,6 +76,16 @@ export class LiftService {
     this.machine.send({ type: EVENT_TYPES.CLEAR_JURY_OVERRULE });
   }
 
+  /** Start (or restart) the 1-minute lift timer for the current lifter. */
+  startTimer() {
+    this.machine.send({ type: EVENT_TYPES.START_TIMER });
+  }
+
+  /** Stop the lift timer and reset it to a full minute, ready for the next lifter. */
+  stopTimer() {
+    this.machine.send({ type: EVENT_TYPES.STOP_TIMER });
+  }
+
   /**
    * Register a referee as connected.
    *

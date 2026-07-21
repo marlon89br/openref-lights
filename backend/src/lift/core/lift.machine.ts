@@ -1,5 +1,11 @@
-import { LiftContext, LiftEvent, LiftState, LiftSnapshot } from '../shared/lift.types';
-import { EVENT_TYPES, RefereePosition, Decision, REQUIRED_REFEREE_COUNT } from '../shared/lift.constants';
+import { LiftContext, LiftEvent, LiftState, LiftSnapshot, TimerStatus } from '../shared/lift.types';
+import {
+  EVENT_TYPES,
+  RefereePosition,
+  Decision,
+  REQUIRED_REFEREE_COUNT,
+  LIFT_TIMER_DURATION_MS,
+} from '../shared/lift.constants';
 
 type StateChangeCallback = (snapshot: LiftSnapshot) => void;
 
@@ -17,6 +23,7 @@ export class LiftStateMachine {
     decisions: new Map<RefereePosition, Decision>(),
     connectedReferees: new Set<RefereePosition>(),
     juryOverrule: undefined,
+    timer: { status: TimerStatus.STOPPED, durationMs: LIFT_TIMER_DURATION_MS },
   };
   private subscribers: StateChangeCallback[] = [];
 
@@ -34,6 +41,7 @@ export class LiftStateMachine {
         decisions: new Map(this.context.decisions),
         connectedReferees: new Set(this.context.connectedReferees),
         juryOverrule: this.context.juryOverrule ? { ...this.context.juryOverrule } : undefined,
+        timer: { ...this.context.timer },
       },
     };
   }
@@ -85,6 +93,12 @@ export class LiftStateMachine {
       case EVENT_TYPES.CLEAR_JURY_OVERRULE:
         this.onClearJuryOverrule();
         break;
+      case EVENT_TYPES.START_TIMER:
+        this.onStartTimer();
+        break;
+      case EVENT_TYPES.STOP_TIMER:
+        this.onStopTimer();
+        break;
     }
     this.notifySubscribers();
   }
@@ -115,6 +129,11 @@ export class LiftStateMachine {
 
     this.context.decisions.set(event.position, event.decision);
     this.state = this.allDecisionsMade() ? LiftState.READY_TO_REVEAL : LiftState.COLLECTING_DECISIONS;
+
+    // All referees have voted - the lift timer is no longer relevant.
+    if (this.state === LiftState.READY_TO_REVEAL) {
+      this.stopAndResetTimer();
+    }
   }
 
   /**
@@ -168,6 +187,9 @@ export class LiftStateMachine {
       timestamp: Date.now(),
     };
     this.state = LiftState.JURY_OVERRULE;
+
+    // A jury overrule finalizes the decision - the lift timer is no longer relevant.
+    this.stopAndResetTimer();
   }
 
   /**
@@ -181,6 +203,28 @@ export class LiftStateMachine {
       this.context.decisions.clear();
       this.state = LiftState.AWAITING_DECISIONS;
     }
+  }
+
+  /**
+   * Starts (or restarts) the 1-minute lift timer.
+   * Per IPF rules, a lifter has 1 minute to start their lift once the bar is loaded.
+   */
+  private onStartTimer(): void {
+    this.context.timer = {
+      status: TimerStatus.RUNNING,
+      durationMs: LIFT_TIMER_DURATION_MS,
+      endsAt: Date.now() + LIFT_TIMER_DURATION_MS,
+    };
+  }
+
+  /** Stops the lift timer and resets it to a full minute, ready for the next lifter. */
+  private onStopTimer(): void {
+    this.stopAndResetTimer();
+  }
+
+  /** Resets the timer to a full minute in a stopped condition. */
+  private stopAndResetTimer(): void {
+    this.context.timer = { status: TimerStatus.STOPPED, durationMs: LIFT_TIMER_DURATION_MS };
   }
 
   /** Returns true when all required referee decisions have been recorded. */
