@@ -16,7 +16,9 @@ services:
     networks:
       - openref-network
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:3000']
+      # node:20-alpine's production stage has neither curl nor wget; use node's
+      # built-in http client against the socket.io handshake path (root path 404s).
+      test: ['CMD', 'node', '-e', "require('http').get('http://127.0.0.1:3000/socket.io/?EIO=4&transport=polling', r => process.exit(r.statusCode===200?0:1)).on('error', () => process.exit(1))"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -40,7 +42,8 @@ services:
     networks:
       - openref-network
     healthcheck:
-      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://localhost']
+      # localhost resolves to ::1 first on Alpine/musl and nginx isn't listening on IPv6 -> refused
+      test: ['CMD', 'wget', '--quiet', '--tries=1', '--spider', 'http://127.0.0.1']
       interval: 30s
       timeout: 10s
       retries: 3
