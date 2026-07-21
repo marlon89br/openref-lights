@@ -1,6 +1,7 @@
-import { Component, OnInit, OnDestroy, computed, effect, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, computed, effect, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LiftService } from '../../services/lift.service';
+import { AudioBeepService } from '../../services/audio-beep.service';
 import { RefereePosition, Decision, LiftStateType, TimerStatus } from '../../models/lift.model';
 import { LiftTimerComponent } from '../../components/lift-timer/lift-timer';
 
@@ -12,6 +13,7 @@ import { LiftTimerComponent } from '../../components/lift-timer/lift-timer';
 })
 export class DisplayComponent implements OnInit, OnDestroy {
   protected liftService = inject(LiftService);
+  private audioBeep = inject(AudioBeepService);
   state = this.liftService.state;
 
   Decision = Decision;
@@ -35,6 +37,10 @@ export class DisplayComponent implements OnInit, OnDestroy {
 
   /** Whether the lift timer is actively counting down. */
   isTimerRunning = computed(() => this.timer()?.status === TimerStatus.RUNNING);
+
+  /** Whether the one-time "tap to enable sound" prompt has been dismissed.
+   *  Browsers block audio until a user gesture occurs on this page. */
+  soundUnlocked = signal(false);
 
   constructor() {
     // Use effect to handle state transitions
@@ -127,5 +133,10 @@ export class DisplayComponent implements OnInit, OnDestroy {
 
   getIndicatorClass(decision: Decision): string {
     return `indicator-${decision.toLowerCase()}`;
+  }
+
+  enableSound() {
+    this.audioBeep.unlock();
+    this.soundUnlocked.set(true);
   }
 }

@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DisplayComponent } from './display';
 import { LiftService } from '../../services/lift.service';
+import { AudioBeepService } from '../../services/audio-beep.service';
 import { LiftStateType, Decision, RefereePosition, LiftState, TimerStatus } from '../../models/lift.model';
 import { signal, WritableSignal } from '@angular/core';
 
@@ -8,6 +9,7 @@ describe('DisplayComponent', () => {
   let component: DisplayComponent;
   let fixture: ComponentFixture<DisplayComponent>;
   let mockLiftService: Partial<LiftService>;
+  let mockAudioBeep: { unlock: ReturnType<typeof vi.fn> };
   let stateSignal: WritableSignal<LiftState | null>;
 
   beforeEach(async () => {
@@ -21,9 +23,14 @@ describe('DisplayComponent', () => {
       resetAll: vi.fn(),
     };
 
+    mockAudioBeep = { unlock: vi.fn() };
+
     await TestBed.configureTestingModule({
       imports: [DisplayComponent],
-      providers: [{ provide: LiftService, useValue: mockLiftService }],
+      providers: [
+        { provide: LiftService, useValue: mockLiftService },
+        { provide: AudioBeepService, useValue: mockAudioBeep },
+      ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DisplayComponent);
@@ -136,5 +143,16 @@ describe('DisplayComponent', () => {
     });
 
     expect(component.isTimerRunning()).toBe(false);
+  });
+
+  it('should start with the sound-unlock overlay showing', () => {
+    expect(component.soundUnlocked()).toBe(false);
+  });
+
+  it('should unlock audio and dismiss the overlay when enableSound is called', () => {
+    component.enableSound();
+
+    expect(mockAudioBeep.unlock).toHaveBeenCalled();
+    expect(component.soundUnlocked()).toBe(true);
   });
 });

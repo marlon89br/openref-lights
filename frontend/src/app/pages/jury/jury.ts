@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { LiftService } from '../../services/lift.service';
+import { AudioBeepService } from '../../services/audio-beep.service';
 import { RefereePosition, Decision, TimerStatus } from '../../models/lift.model';
 import { LiftTimerComponent } from '../../components/lift-timer/lift-timer';
 import { interval } from 'rxjs';
@@ -21,6 +22,7 @@ const COUNTDOWN_TICK_MS = 100;
 })
 export class JuryComponent implements OnInit, OnDestroy {
   protected liftService = inject(LiftService);
+  private audioBeep = inject(AudioBeepService);
   private destroyRef = inject(DestroyRef);
 
   state = this.liftService.state;
@@ -104,6 +106,8 @@ export class JuryComponent implements OnInit, OnDestroy {
   }
 
   startTimer() {
+    // Unlock audio playback here since this click is a genuine user gesture.
+    this.audioBeep.unlock();
     this.liftService.startTimer();
   }
 

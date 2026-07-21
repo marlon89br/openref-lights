@@ -32,4 +32,12 @@
       <span>Connecting...</span>
     </div>
   }
+
+  @if (!soundUnlocked()) {
+    <div class="display-sound-unlock-overlay">
+      <button type="button" class="display-sound-unlock-btn" (click)="enableSound()">
+        🔊 Tap to enable timer sound
+      </button>
+    </div>
+  }
 </div>
