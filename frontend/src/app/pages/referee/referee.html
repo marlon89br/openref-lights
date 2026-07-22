@@ -1,5 +1,8 @@
 <div class="referee-mobile-body">
   <div class="referee-container-mobile">
+    @if (!sessionId()) {
+      <app-session-id-prompt (submitted)="onSessionIdSubmitted($event)" />
+    } @else {
     <!-- Jury Overrule Banner -->
     @if (hasJuryOverrule()) {
       <div class="jury-overrule-banner">
@@ -128,5 +131,6 @@
         </div>
       }
     </div>
+    }
   </div>
 </div>

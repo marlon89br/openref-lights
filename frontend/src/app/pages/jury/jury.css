@@ -1,5 +1,161 @@
 /* Jury Page Specific Styles */
 
+/* Session/Platform ID */
+.session-section {
+  padding: 1rem;
+  background: #0a0a0a;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.session-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 400px;
+  padding: 0.75rem 1rem;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 0.5rem;
+  color: #d1d5db;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.session-toggle-icon {
+  transition: transform 0.2s ease;
+}
+
+.session-toggle-icon.expanded {
+  transform: rotate(90deg);
+}
+
+.session-panel-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+  width: 100%;
+}
+
+.session-id-row {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.session-id-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.75rem;
+  font-size: 1.2rem;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  border-radius: 0.5rem;
+  border: 2px solid #4b5563;
+  background: #111827;
+  color: #fff;
+}
+
+.session-id-input:focus {
+  outline: none;
+  border-color: #60a5fa;
+}
+
+.session-id-btn {
+  padding: 0 1.25rem;
+  font-size: 1rem;
+  font-weight: 700;
+  border: none;
+  border-radius: 0.5rem;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  color: #fff;
+  cursor: pointer;
+}
+
+.session-id-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.session-id-new-btn {
+  background: none;
+  border: none;
+  color: #9ca3af;
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0.25rem;
+}
+
+.session-qr-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 400px;
+}
+
+.session-qr-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: #111827;
+  border-radius: 0.75rem;
+  padding: 1rem 1.5rem;
+  min-width: 220px;
+}
+
+.session-qr-label {
+  color: #d1d5db;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.qr-nav-btn {
+  flex-shrink: 0;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  border: none;
+  background: #1f2937;
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.qr-nav-btn:hover {
+  background: #374151;
+}
+
+.session-qr-dots {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.session-qr-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #374151;
+}
+
+.session-qr-dot.active {
+  background: #60a5fa;
+}
+
 /* Lift Timer */
 .timer-section {
   padding: 1.25rem 1rem;

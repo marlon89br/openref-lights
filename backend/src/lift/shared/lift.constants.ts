@@ -15,6 +15,9 @@ export const EVENT_TYPES = {
 /** IPF rule: a lifter has 1 minute to start their lift once the bar is loaded. */
 export const LIFT_TIMER_DURATION_MS = 60_000;
 
+/** Session/platform IDs identify which meet a client connects to - letters, digits, and hyphens, 3-32 chars. */
+export const SESSION_ID_PATTERN = /^[A-Za-z0-9-]{3,32}$/;
+
 // Enums for type safety
 export enum RefereePosition {
   LEFT = 'left',

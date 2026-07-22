@@ -2,6 +2,8 @@ import { TestBed } from '@angular/core/testing';
 import { LiftService } from './lift.service';
 import { LiftStateType, Decision, RefereePosition } from '../models/lift.model';
 
+const SESSION_ID = 'SESSION1';
+
 // Mock socket.io-client
 const mockSocket = {
   connected: false,
@@ -33,24 +35,24 @@ describe('LiftService', () => {
       expect(service).toBeTruthy();
     });
 
-    it('should connect to backend with position', () => {
-      service.connect(RefereePosition.LEFT);
+    it('should connect to backend with a session and position', () => {
+      service.connect(SESSION_ID, RefereePosition.LEFT);
       expect(service.isConnected()).toBeDefined();
     });
 
     it('should not connect if already connected', () => {
       mockSocket.connected = true;
-      service.connect();
+      service.connect(SESSION_ID);
       const firstCallCount = mockSocket.on.mock.calls.length;
 
-      service.connect();
+      service.connect(SESSION_ID);
       expect(mockSocket.on.mock.calls.length).toBe(firstCallCount);
 
       mockSocket.connected = false;
     });
 
     it('should disconnect properly', () => {
-      service.connect();
+      service.connect(SESSION_ID);
       service.disconnect();
       expect(mockSocket.disconnect).toHaveBeenCalled();
       expect(service.state()).toBeNull();
@@ -63,7 +65,7 @@ describe('LiftService', () => {
     });
 
     it('should update state on stateUpdate event', () => {
-      service.connect();
+      service.connect(SESSION_ID);
 
       const stateUpdateHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'stateUpdate')?.[1];
 
@@ -80,7 +82,7 @@ describe('LiftService', () => {
     });
 
     it('should compute current state correctly', () => {
-      service.connect();
+      service.connect(SESSION_ID);
 
       const stateUpdateHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'stateUpdate')?.[1];
 
@@ -93,7 +95,7 @@ describe('LiftService', () => {
     });
 
     it('should compute decisions correctly', () => {
-      service.connect();
+      service.connect(SESSION_ID);
 
       const stateUpdateHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'stateUpdate')?.[1];
 
@@ -110,7 +112,7 @@ describe('LiftService', () => {
 
   describe('Event Emission', () => {
     beforeEach(() => {
-      service.connect();
+      service.connect(SESSION_ID);
     });
 
     it('should emit decision event', () => {
@@ -158,18 +160,19 @@ describe('LiftService', () => {
 
   describe('Socket Event Handlers', () => {
     it('should handle connect event', () => {
-      service.connect(RefereePosition.CHIEF);
+      service.connect(SESSION_ID, RefereePosition.CHIEF);
 
       const connectHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'connect')?.[1];
 
       connectHandler?.();
       expect(mockSocket.emit).toHaveBeenCalledWith('join', {
+        sessionId: SESSION_ID,
         position: RefereePosition.CHIEF,
       });
     });
 
     it('should handle disconnect event', () => {
-      service.connect();
+      service.connect(SESSION_ID);
 
       const disconnectHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'disconnect')?.[1];
 
@@ -178,18 +181,19 @@ describe('LiftService', () => {
     });
 
     it('should handle reconnect event', () => {
-      service.connect(RefereePosition.RIGHT);
+      service.connect(SESSION_ID, RefereePosition.RIGHT);
 
       const reconnectHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'reconnect')?.[1];
 
       reconnectHandler?.(1);
       expect(mockSocket.emit).toHaveBeenCalledWith('join', {
+        sessionId: SESSION_ID,
         position: RefereePosition.RIGHT,
       });
     });
 
     it('should handle error event', () => {
-      service.connect();
+      service.connect(SESSION_ID);
 
       const errorHandler = mockSocket.on.mock.calls.find((call) => call[0] === 'error')?.[1];
 

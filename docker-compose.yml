@@ -15,6 +15,8 @@ services:
     restart: unless-stopped
     networks:
       - openref-network
+    volumes:
+      - openref-data:/app/backend/data
     healthcheck:
       # node:20-alpine's production stage has neither curl nor wget; use node's
       # built-in http client against the socket.io handshake path (root path 404s).
@@ -51,6 +53,10 @@ services:
 networks:
   openref-network:
     driver: bridge
+
+volumes:
+  # Persists the decision log (backend/data/decision-log.jsonl) across container recreations.
+  openref-data:
 
 # Development override:
 # Create docker-compose.dev.yml with:

@@ -16,6 +16,9 @@ coverage/
 .env.*.local
 backend/.env
 
+# Decision log (persisted at runtime, not source)
+backend/data/
+
 # Logs
 *.log
 npm-debug.log*

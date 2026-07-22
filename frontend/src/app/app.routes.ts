@@ -6,8 +6,11 @@ import { DisplayComponent } from './pages/display/display';
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
+  { path: 'referee/:position/:sessionId', component: RefereeComponent },
   { path: 'referee/:position', component: RefereeComponent },
+  { path: 'jury/:sessionId', component: JuryComponent },
   { path: 'jury', component: JuryComponent },
+  { path: 'display/:sessionId', component: DisplayComponent },
   { path: 'display', component: DisplayComponent },
   { path: '**', redirectTo: '' },
 ];

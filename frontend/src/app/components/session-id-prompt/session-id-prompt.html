@@ -1,0 +1,16 @@
+<div class="session-id-prompt">
+  <h2 class="session-id-prompt-title">Enter Session ID</h2>
+  <p class="session-id-prompt-hint">Ask the jury/table for the session ID, or scan their QR code.</p>
+  <input
+    class="session-id-prompt-input"
+    type="text"
+    inputmode="text"
+    autocapitalize="characters"
+    maxlength="32"
+    placeholder="e.g. K7XM2P"
+    [value]="value()"
+    (input)="onInput($event)"
+    (keydown.enter)="submit()"
+  />
+  <button type="button" class="session-id-prompt-btn" [disabled]="!isValid()" (click)="submit()">Join</button>
+</div>

@@ -1,18 +1,29 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { RefereeComponent } from './referee';
 import { LiftService } from '../../services/lift.service';
-import { ActivatedRoute, ActivatedRouteSnapshot } from '@angular/router';
+import { ActivatedRoute, ActivatedRouteSnapshot, Router } from '@angular/router';
 import { LiftStateType, Decision, RefereePosition, LiftState } from '../../models/lift.model';
 import { signal, WritableSignal } from '@angular/core';
 import { of } from 'rxjs';
 import { convertToParamMap } from '@angular/router';
+
+const SESSION_ID = 'SESSION1';
 
 describe('RefereeComponent', () => {
   let component: RefereeComponent;
   let fixture: ComponentFixture<RefereeComponent>;
   let mockLiftService: Partial<LiftService>;
   let mockActivatedRoute: Partial<ActivatedRoute>;
+  let mockRouter: Partial<Router>;
   let stateSignal: WritableSignal<LiftState | null>;
+
+  function configureRoute(params: Record<string, string>) {
+    mockActivatedRoute = {
+      params: of(params),
+      paramMap: of(convertToParamMap(params)),
+      snapshot: { params } as unknown as ActivatedRouteSnapshot,
+    };
+  }
 
   beforeEach(async () => {
     stateSignal = signal<LiftState | null>(null);
@@ -25,19 +36,16 @@ describe('RefereeComponent', () => {
       resetRefereeDecision: vi.fn(),
     };
 
-    mockActivatedRoute = {
-      params: of({ position: 'left' }),
-      paramMap: of(convertToParamMap({ position: 'left' })),
-      snapshot: {
-        params: { position: 'left' },
-      } as unknown as ActivatedRouteSnapshot,
-    };
+    mockRouter = { navigate: vi.fn() };
+
+    configureRoute({ position: 'left', sessionId: SESSION_ID });
 
     await TestBed.configureTestingModule({
       imports: [RefereeComponent],
       providers: [
         { provide: LiftService, useValue: mockLiftService },
         { provide: ActivatedRoute, useValue: mockActivatedRoute },
+        { provide: Router, useValue: mockRouter },
       ],
     }).compileComponents();
 
@@ -49,9 +57,37 @@ describe('RefereeComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should connect to service with position on init', () => {
+  it('should connect to service with session ID and position on init', () => {
     component.ngOnInit();
-    expect(mockLiftService.connect).toHaveBeenCalledWith(component.position);
+    expect(mockLiftService.connect).toHaveBeenCalledWith(SESSION_ID, component.position);
+    expect(component.sessionId()).toBe(SESSION_ID);
+  });
+
+  it('should not connect when the URL has no session ID', async () => {
+    configureRoute({ position: 'left' });
+    TestBed.resetTestingModule();
+    await TestBed.configureTestingModule({
+      imports: [RefereeComponent],
+      providers: [
+        { provide: LiftService, useValue: mockLiftService },
+        { provide: ActivatedRoute, useValue: mockActivatedRoute },
+        { provide: Router, useValue: mockRouter },
+      ],
+    }).compileComponents();
+    fixture = TestBed.createComponent(RefereeComponent);
+    component = fixture.componentInstance;
+
+    component.ngOnInit();
+
+    expect(mockLiftService.connect).not.toHaveBeenCalled();
+    expect(component.sessionId()).toBeNull();
+  });
+
+  it('should navigate to the entered session ID when submitted from the prompt', () => {
+    component.position = RefereePosition.CHIEF;
+    component.onSessionIdSubmitted('NEWSESH');
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/referee', RefereePosition.CHIEF, 'NEWSESH']);
   });
 
   it('should disconnect on destroy', () => {

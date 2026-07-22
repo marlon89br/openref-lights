@@ -1,43 +1,47 @@
 <div class="display-container">
-  @if (isTimerRunning()) {
-    <div class="display-timer-wrapper">
-      <app-lift-timer [timer]="timer()" class="display-timer"></app-lift-timer>
-    </div>
-  }
+  @if (!sessionId()) {
+    <app-session-id-prompt (submitted)="onSessionIdSubmitted($event)" />
+  } @else {
+    @if (isTimerRunning()) {
+      <div class="display-timer-wrapper">
+        <app-lift-timer [timer]="timer()" class="display-timer"></app-lift-timer>
+      </div>
+    }
 
-  <div class="display-lights-wrapper" [class.display-lights-wrapper-compact]="isTimerRunning()">
-    <div class="display-lights" [class.display-lights-compact]="isTimerRunning()">
-      @for (position of refereePositions; track position) {
-        @let decision = getDisplayDecision(position);
-        <div class="display-light-column">
-          <div class="display-light-container">
-            <div class="display-light-circle" [class]="getCircleClass(decision)"></div>
-            @if (decision) {
-              <div class="display-light-indicator" [class]="getIndicatorClass(decision)"></div>
-            }
+    <div class="display-lights-wrapper" [class.display-lights-wrapper-compact]="isTimerRunning()">
+      <div class="display-lights" [class.display-lights-compact]="isTimerRunning()">
+        @for (position of refereePositions; track position) {
+          @let decision = getDisplayDecision(position);
+          <div class="display-light-column">
+            <div class="display-light-container">
+              <div class="display-light-circle" [class]="getCircleClass(decision)"></div>
+              @if (decision) {
+                <div class="display-light-indicator" [class]="getIndicatorClass(decision)"></div>
+              }
+            </div>
           </div>
-        </div>
-      }
+        }
+      </div>
     </div>
-  </div>
 
-  @if (hasJuryOverrule()) {
-    <div class="display-jury-overrule">
-      <div class="display-jury-overrule-badge">⚠️ JURY OVERRULE ACTIVE ⚠️</div>
-    </div>
-  }
+    @if (hasJuryOverrule()) {
+      <div class="display-jury-overrule">
+        <div class="display-jury-overrule-badge">⚠️ JURY OVERRULE ACTIVE ⚠️</div>
+      </div>
+    }
 
-  @if (isDisconnected()) {
-    <div class="display-state-indicator">
-      <span>Connecting...</span>
-    </div>
-  }
+    @if (isDisconnected()) {
+      <div class="display-state-indicator">
+        <span>Connecting...</span>
+      </div>
+    }
 
-  @if (!soundUnlocked()) {
-    <div class="display-sound-unlock-overlay">
-      <button type="button" class="display-sound-unlock-btn" (click)="enableSound()">
-        🔊 Tap to enable timer sound
-      </button>
-    </div>
+    @if (!soundUnlocked()) {
+      <div class="display-sound-unlock-overlay">
+        <button type="button" class="display-sound-unlock-btn" (click)="enableSound()">
+          🔊 Tap to enable timer sound
+        </button>
+      </div>
+    }
   }
 </div>

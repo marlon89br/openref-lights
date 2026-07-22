@@ -1,9 +1,12 @@
 import { Component, OnInit, OnDestroy, signal, computed, inject, DestroyRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import { LiftService } from '../../services/lift.service';
 import { AudioBeepService } from '../../services/audio-beep.service';
 import { RefereePosition, Decision, TimerStatus } from '../../models/lift.model';
 import { LiftTimerComponent } from '../../components/lift-timer/lift-timer';
+import { QrCodeComponent } from '../../components/qr-code/qr-code';
+import { generateSessionId, isValidSessionId, normalizeSessionId } from '../../utils/session-id';
 import { interval } from 'rxjs';
 import { takeWhile, tap, finalize } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -16,13 +19,15 @@ const COUNTDOWN_TICK_MS = 100;
 
 @Component({
   selector: 'app-jury',
-  imports: [CommonModule, LiftTimerComponent],
+  imports: [CommonModule, LiftTimerComponent, QrCodeComponent],
   templateUrl: './jury.html',
   styleUrl: './jury.css',
 })
 export class JuryComponent implements OnInit, OnDestroy {
   protected liftService = inject(LiftService);
   private audioBeep = inject(AudioBeepService);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private destroyRef = inject(DestroyRef);
 
   state = this.liftService.state;
@@ -34,6 +39,31 @@ export class JuryComponent implements OnInit, OnDestroy {
   countdown = signal(COUNTDOWN_DURATION_SECONDS);
   pendingDecision = signal<Decision | null>(null);
   private countdownToken = 0;
+
+  // Session/platform ID this jury table is running
+  sessionId = signal<string | null>(null);
+  sessionIdInput = signal('');
+  isSessionIdInputValid = computed(() => isValidSessionId(normalizeSessionId(this.sessionIdInput())));
+
+  displayUrl = computed(() => this.joinUrl('display'));
+  refereeUrls = computed(() => ({
+    left: this.joinUrl('referee', RefereePosition.LEFT),
+    chief: this.joinUrl('referee', RefereePosition.CHIEF),
+    right: this.joinUrl('referee', RefereePosition.RIGHT),
+  }));
+
+  /** Hidden by default so the session ID/QR codes aren't visible to anyone walking past the table. */
+  sessionPanelExpanded = signal(false);
+
+  /** Shown one at a time so only the intended device's QR code is ever scannable. */
+  qrIndex = signal(0);
+  qrItems = computed(() => [
+    { label: 'Public Display', url: this.displayUrl() },
+    { label: 'Left Referee', url: this.refereeUrls().left },
+    { label: 'Chief Referee', url: this.refereeUrls().chief },
+    { label: 'Right Referee', url: this.refereeUrls().right },
+  ]);
+  currentQrItem = computed(() => this.qrItems()[this.qrIndex()]);
 
   // Computed signal for jury overrule
   hasJuryOverrule = computed(() => !!this.liftService.state()?.context.juryOverrule);
@@ -52,11 +82,67 @@ export class JuryComponent implements OnInit, OnDestroy {
   };
 
   ngOnInit() {
-    this.liftService.connect();
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      const idFromRoute = params.get('sessionId');
+
+      if (!idFromRoute) {
+        this.router.navigate(['/jury', generateSessionId()], { replaceUrl: true });
+
+        return;
+      }
+
+      if (idFromRoute === this.sessionId()) return;
+
+      this.sessionId.set(idFromRoute);
+      this.sessionIdInput.set(idFromRoute);
+      this.liftService.disconnect();
+      this.liftService.connect(idFromRoute);
+    });
   }
 
   ngOnDestroy() {
     this.liftService.disconnect();
+  }
+
+  onSessionIdInput(event: Event) {
+    this.sessionIdInput.set((event.target as HTMLInputElement).value);
+  }
+
+  applySessionId() {
+    const sessionId = normalizeSessionId(this.sessionIdInput());
+
+    if (!isValidSessionId(sessionId) || sessionId === this.sessionId()) return;
+
+    this.router.navigate(['/jury', sessionId]);
+  }
+
+  newSessionId() {
+    this.router.navigate(['/jury', generateSessionId()]);
+  }
+
+  toggleSessionPanel() {
+    this.sessionPanelExpanded.update((expanded) => !expanded);
+    this.qrIndex.set(0);
+  }
+
+  nextQrCode() {
+    const total = this.qrItems().length;
+
+    this.qrIndex.update((i) => (i + 1) % total);
+  }
+
+  previousQrCode() {
+    const total = this.qrItems().length;
+
+    this.qrIndex.update((i) => (i - 1 + total) % total);
+  }
+
+  private joinUrl(...pathSegments: string[]): string {
+    const sessionId = this.sessionId();
+
+    if (!sessionId) return '';
+
+    return `${window.location.origin}/${[...pathSegments, sessionId].join('/')}`;
   }
 
   getDecision(position: RefereePosition): Decision | undefined {
