@@ -52,6 +52,19 @@ export class JuryComponent implements OnInit, OnDestroy {
     right: this.joinUrl('referee', RefereePosition.RIGHT),
   }));
 
+  /** Hidden by default so the session ID/QR codes aren't visible to anyone walking past the table. */
+  sessionPanelExpanded = signal(false);
+
+  /** Shown one at a time so only the intended device's QR code is ever scannable. */
+  qrIndex = signal(0);
+  qrItems = computed(() => [
+    { label: 'Public Display', url: this.displayUrl() },
+    { label: 'Left Referee', url: this.refereeUrls().left },
+    { label: 'Chief Referee', url: this.refereeUrls().chief },
+    { label: 'Right Referee', url: this.refereeUrls().right },
+  ]);
+  currentQrItem = computed(() => this.qrItems()[this.qrIndex()]);
+
   // Computed signal for jury overrule
   hasJuryOverrule = computed(() => !!this.liftService.state()?.context.juryOverrule);
 
@@ -105,6 +118,23 @@ export class JuryComponent implements OnInit, OnDestroy {
 
   newSessionId() {
     this.router.navigate(['/jury', generateSessionId()]);
+  }
+
+  toggleSessionPanel() {
+    this.sessionPanelExpanded.update((expanded) => !expanded);
+    this.qrIndex.set(0);
+  }
+
+  nextQrCode() {
+    const total = this.qrItems().length;
+
+    this.qrIndex.update((i) => (i + 1) % total);
+  }
+
+  previousQrCode() {
+    const total = this.qrItems().length;
+
+    this.qrIndex.update((i) => (i - 1 + total) % total);
   }
 
   private joinUrl(...pathSegments: string[]): string {

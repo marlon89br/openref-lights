@@ -7,46 +7,55 @@
 
     <!-- Session/Platform ID -->
     <div class="session-section">
-      <div class="session-id-row">
-        <input
-          class="session-id-input"
-          type="text"
-          inputmode="text"
-          autocapitalize="characters"
-          maxlength="32"
-          [value]="sessionIdInput()"
-          (input)="onSessionIdInput($event)"
-          (keydown.enter)="applySessionId()"
-        />
-        <button
-          type="button"
-          class="session-id-btn"
-          [disabled]="!isSessionIdInputValid() || sessionIdInput() === sessionId()"
-          (click)="applySessionId()"
-        >
-          Use ID
-        </button>
-      </div>
-      <button type="button" class="session-id-new-btn" (click)="newSessionId()">Generate New Session</button>
+      <button
+        type="button"
+        class="session-toggle-btn"
+        [attr.aria-expanded]="sessionPanelExpanded()"
+        (click)="toggleSessionPanel()"
+      >
+        <span>{{ sessionPanelExpanded() ? 'Hide' : 'Show' }} Session ID &amp; QR Codes</span>
+        <span class="session-toggle-icon" [class.expanded]="sessionPanelExpanded()">▸</span>
+      </button>
 
-      @if (sessionId()) {
-        <div class="session-qr-grid">
-          <div class="session-qr-card">
-            <div class="session-qr-label">Public Display</div>
-            <app-qr-code [value]="displayUrl()" [size]="140"></app-qr-code>
+      @if (sessionPanelExpanded()) {
+        <div class="session-panel-content">
+          <div class="session-id-row">
+            <input
+              class="session-id-input"
+              type="text"
+              inputmode="text"
+              autocapitalize="characters"
+              maxlength="32"
+              [value]="sessionIdInput()"
+              (input)="onSessionIdInput($event)"
+              (keydown.enter)="applySessionId()"
+            />
+            <button
+              type="button"
+              class="session-id-btn"
+              [disabled]="!isSessionIdInputValid() || sessionIdInput() === sessionId()"
+              (click)="applySessionId()"
+            >
+              Use ID
+            </button>
           </div>
-          <div class="session-qr-card">
-            <div class="session-qr-label">Left Referee</div>
-            <app-qr-code [value]="refereeUrls().left" [size]="140"></app-qr-code>
-          </div>
-          <div class="session-qr-card">
-            <div class="session-qr-label">Chief Referee</div>
-            <app-qr-code [value]="refereeUrls().chief" [size]="140"></app-qr-code>
-          </div>
-          <div class="session-qr-card">
-            <div class="session-qr-label">Right Referee</div>
-            <app-qr-code [value]="refereeUrls().right" [size]="140"></app-qr-code>
-          </div>
+          <button type="button" class="session-id-new-btn" (click)="newSessionId()">Generate New Session</button>
+
+          @if (sessionId() && currentQrItem(); as item) {
+            <div class="session-qr-carousel">
+              <button type="button" class="qr-nav-btn" (click)="previousQrCode()" aria-label="Previous QR code">‹</button>
+              <div class="session-qr-card">
+                <div class="session-qr-label">{{ item.label }}</div>
+                <app-qr-code [value]="item.url" [size]="180"></app-qr-code>
+              </div>
+              <button type="button" class="qr-nav-btn" (click)="nextQrCode()" aria-label="Next QR code">›</button>
+            </div>
+            <div class="session-qr-dots">
+              @for (dot of qrItems(); track dot.label; let i = $index) {
+                <span class="session-qr-dot" [class.active]="i === qrIndex()"></span>
+              }
+            </div>
+          }
         </div>
       }
     </div>

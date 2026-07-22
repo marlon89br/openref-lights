@@ -109,6 +109,56 @@ describe('JuryComponent', () => {
     expect(component.refereeUrls().right).toContain(`/referee/right/${SESSION_ID}`);
   });
 
+  it('should start with the session panel collapsed', () => {
+    expect(component.sessionPanelExpanded()).toBe(false);
+  });
+
+  it('should toggle the session panel', () => {
+    component.toggleSessionPanel();
+    expect(component.sessionPanelExpanded()).toBe(true);
+
+    component.toggleSessionPanel();
+    expect(component.sessionPanelExpanded()).toBe(false);
+  });
+
+  it('should reset the QR carousel to the first item when toggling the panel', () => {
+    component.ngOnInit();
+    component.nextQrCode();
+    expect(component.qrIndex()).toBe(1);
+
+    component.toggleSessionPanel();
+    expect(component.qrIndex()).toBe(0);
+  });
+
+  it('should list one QR item per join destination', () => {
+    component.ngOnInit();
+
+    const labels = component.qrItems().map((item) => item.label);
+
+    expect(labels).toEqual(['Public Display', 'Left Referee', 'Chief Referee', 'Right Referee']);
+  });
+
+  it('should show only one QR code at a time and cycle forward', () => {
+    component.ngOnInit();
+
+    expect(component.currentQrItem().label).toBe('Public Display');
+
+    component.nextQrCode();
+    expect(component.currentQrItem().label).toBe('Left Referee');
+
+    component.nextQrCode();
+    component.nextQrCode();
+    component.nextQrCode();
+    expect(component.currentQrItem().label).toBe('Public Display');
+  });
+
+  it('should cycle backward through QR codes', () => {
+    component.ngOnInit();
+
+    component.previousQrCode();
+    expect(component.currentQrItem().label).toBe('Right Referee');
+  });
+
   it('should disconnect on destroy', () => {
     component.ngOnDestroy();
     expect(mockLiftService.disconnect).toHaveBeenCalled();
