@@ -1,17 +1,16 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { LiftService } from './lift.service';
+import { DecisionLogService } from '../../decision-log/decision-log.service';
 import { LiftState, TimerStatus } from '../shared/lift.types';
 import { RefereePosition, Decision } from '../shared/lift.constants';
 
 describe('LiftService', () => {
+  const SESSION_ID = 'SESSION1';
   let service: LiftService;
+  let decisionLog: jest.Mocked<DecisionLogService>;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [LiftService],
-    }).compile();
-
-    service = module.get<LiftService>(LiftService);
+  beforeEach(() => {
+    decisionLog = { record: jest.fn() } as unknown as jest.Mocked<DecisionLogService>;
+    service = new LiftService(SESSION_ID, decisionLog);
   });
 
   it('should be defined', () => {
@@ -57,6 +56,17 @@ describe('LiftService', () => {
 
       expect(service.getState().state).toBe(LiftState.READY_TO_REVEAL);
     });
+
+    it('should log the decision with the session ID', () => {
+      service.makeDecision(RefereePosition.LEFT, Decision.WHITE);
+
+      expect(decisionLog.record).toHaveBeenCalledWith({
+        sessionId: SESSION_ID,
+        eventType: 'decision',
+        position: RefereePosition.LEFT,
+        decision: Decision.WHITE,
+      });
+    });
   });
 
   describe('resetRefereeDecision', () => {
@@ -66,6 +76,16 @@ describe('LiftService', () => {
 
       const state = service.getState();
       expect(state.context.decisions.has(RefereePosition.LEFT)).toBe(false);
+    });
+
+    it('should log the reset', () => {
+      service.resetRefereeDecision(RefereePosition.LEFT);
+
+      expect(decisionLog.record).toHaveBeenCalledWith({
+        sessionId: SESSION_ID,
+        eventType: 'decision_reset',
+        position: RefereePosition.LEFT,
+      });
     });
   });
 
@@ -78,6 +98,12 @@ describe('LiftService', () => {
 
       expect(service.getState().state).toBe(LiftState.REVEALING_DECISIONS);
     });
+
+    it('should log the reveal', () => {
+      service.revealDecisions();
+
+      expect(decisionLog.record).toHaveBeenCalledWith({ sessionId: SESSION_ID, eventType: 'reveal' });
+    });
   });
 
   describe('resetAll', () => {
@@ -89,6 +115,12 @@ describe('LiftService', () => {
       const state = service.getState();
       expect(state.context.decisions.size).toBe(0);
       expect(state.state).toBe(LiftState.AWAITING_DECISIONS);
+    });
+
+    it('should log the reset', () => {
+      service.resetAll();
+
+      expect(decisionLog.record).toHaveBeenCalledWith({ sessionId: SESSION_ID, eventType: 'reset_all' });
     });
   });
 
@@ -107,6 +139,16 @@ describe('LiftService', () => {
       const state = service.getState();
       expect(state.context.juryOverrule?.decision).toBe(Decision.YELLOW);
     });
+
+    it('should log the overrule', () => {
+      service.juryOverrule(Decision.RED);
+
+      expect(decisionLog.record).toHaveBeenCalledWith({
+        sessionId: SESSION_ID,
+        eventType: 'jury_overrule',
+        decision: Decision.RED,
+      });
+    });
   });
 
   describe('clearJuryOverrule', () => {
@@ -117,6 +159,12 @@ describe('LiftService', () => {
       const state = service.getState();
       expect(state.state).toBe(LiftState.AWAITING_DECISIONS);
       expect(state.context.juryOverrule).toBeUndefined();
+    });
+
+    it('should log the cleared overrule', () => {
+      service.clearJuryOverrule();
+
+      expect(decisionLog.record).toHaveBeenCalledWith({ sessionId: SESSION_ID, eventType: 'clear_jury_overrule' });
     });
   });
 
@@ -136,6 +184,13 @@ describe('LiftService', () => {
       const state = service.getState();
       expect(state.context.timer.status).toBe(TimerStatus.STOPPED);
       expect(state.context.timer.endsAt).toBeUndefined();
+    });
+
+    it('should not write to the decision log', () => {
+      service.startTimer();
+      service.stopTimer();
+
+      expect(decisionLog.record).not.toHaveBeenCalled();
     });
   });
 

@@ -33,6 +33,7 @@
     "@angular/forms": "^21.1.0",
     "@angular/platform-browser": "^21.1.0",
     "@angular/router": "^21.1.0",
+    "qrcode": "^1.5.4",
     "rxjs": "~7.8.0",
     "socket.io-client": "^4.8.3",
     "tslib": "^2.3.0"
@@ -48,6 +49,7 @@
     "@angular/build": "^21.1.2",
     "@angular/cli": "^21.1.2",
     "@angular/compiler-cli": "^21.1.0",
+    "@types/qrcode": "^1.5.5",
     "@vitest/ui": "^4.0.18",
     "angular-eslint": "^21.0.0",
     "dotenv": "^17.2.3",

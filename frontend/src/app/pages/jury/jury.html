@@ -5,6 +5,52 @@
       <h1 class="page-title">Jury Panel</h1>
     </div>
 
+    <!-- Session/Platform ID -->
+    <div class="session-section">
+      <div class="session-id-row">
+        <input
+          class="session-id-input"
+          type="text"
+          inputmode="text"
+          autocapitalize="characters"
+          maxlength="32"
+          [value]="sessionIdInput()"
+          (input)="onSessionIdInput($event)"
+          (keydown.enter)="applySessionId()"
+        />
+        <button
+          type="button"
+          class="session-id-btn"
+          [disabled]="!isSessionIdInputValid() || sessionIdInput() === sessionId()"
+          (click)="applySessionId()"
+        >
+          Use ID
+        </button>
+      </div>
+      <button type="button" class="session-id-new-btn" (click)="newSessionId()">Generate New Session</button>
+
+      @if (sessionId()) {
+        <div class="session-qr-grid">
+          <div class="session-qr-card">
+            <div class="session-qr-label">Public Display</div>
+            <app-qr-code [value]="displayUrl()" [size]="140"></app-qr-code>
+          </div>
+          <div class="session-qr-card">
+            <div class="session-qr-label">Left Referee</div>
+            <app-qr-code [value]="refereeUrls().left" [size]="140"></app-qr-code>
+          </div>
+          <div class="session-qr-card">
+            <div class="session-qr-label">Chief Referee</div>
+            <app-qr-code [value]="refereeUrls().chief" [size]="140"></app-qr-code>
+          </div>
+          <div class="session-qr-card">
+            <div class="session-qr-label">Right Referee</div>
+            <app-qr-code [value]="refereeUrls().right" [size]="140"></app-qr-code>
+          </div>
+        </div>
+      }
+    </div>
+
     <!-- Lift Timer -->
     <div class="timer-section">
       <app-lift-timer [timer]="timer()" class="jury-timer"></app-lift-timer>

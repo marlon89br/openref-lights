@@ -27,7 +27,7 @@ export class LiftService {
     }
   }
 
-  connect(position?: RefereePosition) {
+  connect(sessionId: string, position?: RefereePosition) {
     if (this.socket?.connected) {
       this.debug('Already connected');
 
@@ -46,13 +46,13 @@ export class LiftService {
       };
     }
 
-    this.debug('Connecting to:', this.BACKEND_URL, 'as:', position ?? 'display/control client');
+    this.debug('Connecting to:', this.BACKEND_URL, 'session:', sessionId, 'as:', position ?? 'display/control client');
     this.socket = io(this.BACKEND_URL, socketOptions);
 
     this.socket.on('connect', () => {
       this.debug('Connected to server, socket ID:', this.socket?.id);
       this._isConnected.set(true);
-      this.socket?.emit('join', { position });
+      this.socket?.emit('join', { sessionId, position });
     });
 
     this.socket.on('stateUpdate', (data: LiftState) => {
@@ -68,9 +68,7 @@ export class LiftService {
     this.socket.on('reconnect', (attemptNumber) => {
       this.debug('Reconnected after', attemptNumber, 'attempts');
       this._isConnected.set(true);
-      if (position) {
-        this.socket?.emit('join', { position });
-      }
+      this.socket?.emit('join', { sessionId, position });
     });
 
     this.socket.on('error', (error: Error) => {

@@ -30,6 +30,9 @@ Many referee light systems are expensive, proprietary, or require specific hardw
 - **Decisions and Failure Reasons** : ⚪ White (good lift), 🔴 Red (no lift), 🔵 Blue (no lift), 🟡 Yellow (no lift)
 - **Real-time Updates** : WebSocket-based instant synchronization
 - **Jury Overrule** : Jury panel support with dedicated controls
+- **Lift Timer** : Synchronized 1-minute countdown (per IPF rules) with audible alerts, shown on the jury panel and public display
+- **Multiple Platforms** : Run several meets/platforms at once, each isolated under its own session ID. The jury generates (or sets) an ID and shares it with referees and the public display via QR code or by typing it in
+- **Decision Log** : Every referee/jury decision is recorded to a timestamped, permanent log for later review
 - **Multiple Interfaces** : Referee, Jury, Display, and Control views
 - **Easy Deployment** : Runs on cheap hardware or in the cloud
 - **Optional Authentication** : Token-based security when you need it

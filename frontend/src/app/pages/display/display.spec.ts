@@ -2,15 +2,38 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { DisplayComponent } from './display';
 import { LiftService } from '../../services/lift.service';
 import { AudioBeepService } from '../../services/audio-beep.service';
+import { ActivatedRoute, ActivatedRouteSnapshot, Router, convertToParamMap } from '@angular/router';
 import { LiftStateType, Decision, RefereePosition, LiftState, TimerStatus } from '../../models/lift.model';
 import { signal, WritableSignal } from '@angular/core';
+import { of } from 'rxjs';
+
+const SESSION_ID = 'SESSION1';
 
 describe('DisplayComponent', () => {
   let component: DisplayComponent;
   let fixture: ComponentFixture<DisplayComponent>;
   let mockLiftService: Partial<LiftService>;
   let mockAudioBeep: { unlock: ReturnType<typeof vi.fn> };
+  let mockRouter: Partial<Router>;
   let stateSignal: WritableSignal<LiftState | null>;
+
+  function configure(params: Record<string, string>) {
+    return TestBed.configureTestingModule({
+      imports: [DisplayComponent],
+      providers: [
+        { provide: LiftService, useValue: mockLiftService },
+        { provide: AudioBeepService, useValue: mockAudioBeep },
+        { provide: Router, useValue: mockRouter },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(convertToParamMap(params)),
+            snapshot: { params } as unknown as ActivatedRouteSnapshot,
+          },
+        },
+      ],
+    }).compileComponents();
+  }
 
   beforeEach(async () => {
     stateSignal = signal<LiftState | null>(null);
@@ -24,14 +47,9 @@ describe('DisplayComponent', () => {
     };
 
     mockAudioBeep = { unlock: vi.fn() };
+    mockRouter = { navigate: vi.fn() };
 
-    await TestBed.configureTestingModule({
-      imports: [DisplayComponent],
-      providers: [
-        { provide: LiftService, useValue: mockLiftService },
-        { provide: AudioBeepService, useValue: mockAudioBeep },
-      ],
-    }).compileComponents();
+    await configure({ sessionId: SESSION_ID });
 
     fixture = TestBed.createComponent(DisplayComponent);
     component = fixture.componentInstance;
@@ -41,9 +59,27 @@ describe('DisplayComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should connect to service on init', () => {
+  it('should connect to service with the session ID from the URL on init', () => {
     component.ngOnInit();
-    expect(mockLiftService.connect).toHaveBeenCalled();
+    expect(mockLiftService.connect).toHaveBeenCalledWith(SESSION_ID);
+    expect(component.sessionId()).toBe(SESSION_ID);
+  });
+
+  it('should not connect and should show the prompt when the URL has no session ID', async () => {
+    TestBed.resetTestingModule();
+    await configure({});
+    fixture = TestBed.createComponent(DisplayComponent);
+    component = fixture.componentInstance;
+
+    component.ngOnInit();
+
+    expect(mockLiftService.connect).not.toHaveBeenCalled();
+    expect(component.sessionId()).toBeNull();
+  });
+
+  it('should navigate to the entered session ID when submitted from the prompt', () => {
+    component.onSessionIdSubmitted('NEWSESH');
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/display', 'NEWSESH']);
   });
 
   it('should disconnect on destroy', () => {

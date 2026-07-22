@@ -2,16 +2,39 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { JuryComponent } from './jury';
 import { LiftService } from '../../services/lift.service';
 import { AudioBeepService } from '../../services/audio-beep.service';
+import { ActivatedRoute, ActivatedRouteSnapshot, Router, convertToParamMap } from '@angular/router';
 import { LiftStateType, Decision, RefereePosition, TimerStatus } from '../../models/lift.model';
 import { signal, WritableSignal } from '@angular/core';
 import { LiftState } from '../../models/lift.model';
+import { of } from 'rxjs';
+
+const SESSION_ID = 'SESSION1';
 
 describe('JuryComponent', () => {
   let component: JuryComponent;
   let fixture: ComponentFixture<JuryComponent>;
   let mockLiftService: Partial<LiftService>;
   let mockAudioBeep: { unlock: ReturnType<typeof vi.fn> };
+  let mockRouter: Partial<Router>;
   let stateSignal: WritableSignal<LiftState | null>;
+
+  function configure(params: Record<string, string>) {
+    return TestBed.configureTestingModule({
+      imports: [JuryComponent],
+      providers: [
+        { provide: LiftService, useValue: mockLiftService },
+        { provide: AudioBeepService, useValue: mockAudioBeep },
+        { provide: Router, useValue: mockRouter },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            paramMap: of(convertToParamMap(params)),
+            snapshot: { params } as unknown as ActivatedRouteSnapshot,
+          },
+        },
+      ],
+    }).compileComponents();
+  }
 
   beforeEach(async () => {
     stateSignal = signal<LiftState | null>(null);
@@ -26,14 +49,9 @@ describe('JuryComponent', () => {
     };
 
     mockAudioBeep = { unlock: vi.fn() };
+    mockRouter = { navigate: vi.fn() };
 
-    await TestBed.configureTestingModule({
-      imports: [JuryComponent],
-      providers: [
-        { provide: LiftService, useValue: mockLiftService },
-        { provide: AudioBeepService, useValue: mockAudioBeep },
-      ],
-    }).compileComponents();
+    await configure({ sessionId: SESSION_ID });
 
     fixture = TestBed.createComponent(JuryComponent);
     component = fixture.componentInstance;
@@ -43,9 +61,52 @@ describe('JuryComponent', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should connect to service on init', () => {
+  it('should connect to service with the session ID from the URL on init', () => {
     component.ngOnInit();
-    expect(mockLiftService.connect).toHaveBeenCalled();
+    expect(mockLiftService.connect).toHaveBeenCalledWith(SESSION_ID);
+    expect(component.sessionId()).toBe(SESSION_ID);
+  });
+
+  it('should generate and navigate to a new session ID when the URL has none', async () => {
+    TestBed.resetTestingModule();
+    await configure({});
+    fixture = TestBed.createComponent(JuryComponent);
+    component = fixture.componentInstance;
+
+    component.ngOnInit();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/jury', expect.any(String)], { replaceUrl: true });
+    expect(mockLiftService.connect).not.toHaveBeenCalled();
+  });
+
+  it('should navigate to a freshly generated session ID', () => {
+    component.newSessionId();
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/jury', expect.any(String)]);
+  });
+
+  it('should navigate when applying a valid typed session ID', () => {
+    component.ngOnInit();
+    component.sessionIdInput.set('NEWSESH');
+    component.applySessionId();
+
+    expect(mockRouter.navigate).toHaveBeenCalledWith(['/jury', 'NEWSESH']);
+  });
+
+  it('should not navigate when applying an invalid typed session ID', () => {
+    component.ngOnInit();
+    component.sessionIdInput.set('!!');
+    component.applySessionId();
+
+    expect(mockRouter.navigate).not.toHaveBeenCalledWith(['/jury', '!!']);
+  });
+
+  it('should compute join URLs once a session ID is known', () => {
+    component.ngOnInit();
+
+    expect(component.displayUrl()).toContain(`/display/${SESSION_ID}`);
+    expect(component.refereeUrls().left).toContain(`/referee/left/${SESSION_ID}`);
+    expect(component.refereeUrls().chief).toContain(`/referee/chief/${SESSION_ID}`);
+    expect(component.refereeUrls().right).toContain(`/referee/right/${SESSION_ID}`);
   });
 
   it('should disconnect on destroy', () => {

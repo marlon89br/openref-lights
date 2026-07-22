@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
-import { LiftService } from './api/lift.service';
+import { SessionManager } from './api/session-manager.service';
 import { LiftGateway } from './api/lift.gateway';
+import { DecisionLogModule } from '../decision-log/decision-log.module';
 
 @Module({
-  providers: [LiftService, LiftGateway],
-  exports: [LiftService],
+  imports: [DecisionLogModule],
+  providers: [SessionManager, LiftGateway],
 })
 export class LiftModule {}

@@ -4,6 +4,8 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { LiftService } from '../../services/lift.service';
 import { RefereePosition, Decision, LiftStateType } from '../../models/lift.model';
 import { DecisionLightComponent } from '../../components/decision-light/decision-light';
+import { SessionIdPromptComponent } from '../../components/session-id-prompt/session-id-prompt';
+import { isValidSessionId } from '../../utils/session-id';
 import { interval } from 'rxjs';
 import { takeWhile, tap, finalize } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -17,7 +19,7 @@ const COUNTDOWN_TICK_MS = 100;
 
 @Component({
   selector: 'app-referee',
-  imports: [CommonModule, DecisionLightComponent],
+  imports: [CommonModule, DecisionLightComponent, SessionIdPromptComponent],
   templateUrl: './referee.html',
   styleUrl: './referee.css',
 })
@@ -30,6 +32,9 @@ export class RefereeComponent implements OnInit, OnDestroy {
   private destroyRef = inject(DestroyRef);
 
   state = this.liftService.state;
+
+  /** The session/platform ID this referee is connected to, or null until one is known. */
+  sessionId = signal<string | null>(null);
 
   isSubmitting = signal(false);
   countdown = signal(COUNTDOWN_DURATION_SECONDS);
@@ -101,12 +106,30 @@ export class RefereeComponent implements OnInit, OnDestroy {
         return;
       }
       this.position = position as RefereePosition;
-      this.liftService.connect(this.position);
+
+      const sessionId = params.get('sessionId');
+
+      if (!sessionId || !isValidSessionId(sessionId)) {
+        this.sessionId.set(null);
+        this.liftService.disconnect();
+
+        return;
+      }
+
+      if (sessionId === this.sessionId()) return;
+
+      this.sessionId.set(sessionId);
+      this.liftService.disconnect();
+      this.liftService.connect(sessionId, this.position);
     });
   }
 
   ngOnDestroy() {
     this.liftService.disconnect();
+  }
+
+  onSessionIdSubmitted(sessionId: string) {
+    this.router.navigate(['/referee', this.position, sessionId]);
   }
 
   makeDecision(decision: Decision) {

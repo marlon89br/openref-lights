@@ -1,18 +1,24 @@
-import { Injectable } from '@nestjs/common';
 import { LiftStateMachine } from '../core/lift.machine';
 import { LiftSnapshot } from '../shared/lift.types';
 import { EVENT_TYPES, RefereePosition, Decision } from '../shared/lift.constants';
+import { DecisionLogService } from '../../decision-log/decision-log.service';
 
 /**
- * Service layer that encapsulates the lift state machine.
+ * Service layer that encapsulates one platform/meet's lift state machine.
  *
+ * One instance exists per session ID (see SessionManager) so multiple
+ * platforms can run concurrently without interfering with each other.
  * Provides a clean API for interacting with the state machine without
- * exposing its internal implementation. All state changes go through
- * this service to maintain consistency.
+ * exposing its internal implementation, and records a permanent,
+ * timestamped log entry for every decision-affecting event.
  */
-@Injectable()
 export class LiftService {
   private machine = new LiftStateMachine();
+
+  constructor(
+    private readonly sessionId: string,
+    private readonly decisionLog: DecisionLogService,
+  ) {}
 
   /**
    * Subscribe to state changes.
@@ -41,6 +47,7 @@ export class LiftService {
    */
   makeDecision(position: RefereePosition, decision: Decision) {
     this.machine.send({ type: EVENT_TYPES.DECISION, position, decision });
+    this.decisionLog.record({ sessionId: this.sessionId, eventType: 'decision', position, decision });
   }
 
   /**
@@ -50,16 +57,19 @@ export class LiftService {
    */
   resetRefereeDecision(position: RefereePosition) {
     this.machine.send({ type: EVENT_TYPES.RESET_REFEREE_DECISION, position });
+    this.decisionLog.record({ sessionId: this.sessionId, eventType: 'decision_reset', position });
   }
 
   /** Trigger display of lights once all decisions are made. */
   revealDecisions() {
     this.machine.send({ type: EVENT_TYPES.REVEAL_DECISIONS });
+    this.decisionLog.record({ sessionId: this.sessionId, eventType: 'reveal' });
   }
 
   /** Clear all decisions and return to awaiting decisions state. */
   resetAll() {
     this.machine.send({ type: EVENT_TYPES.RESET_ALL });
+    this.decisionLog.record({ sessionId: this.sessionId, eventType: 'reset_all' });
   }
 
   /**
@@ -69,11 +79,13 @@ export class LiftService {
    */
   juryOverrule(decision: Decision) {
     this.machine.send({ type: EVENT_TYPES.JURY_OVERRULE, decision });
+    this.decisionLog.record({ sessionId: this.sessionId, eventType: 'jury_overrule', decision });
   }
 
   /** Clear the jury overrule and return to awaiting decisions. */
   clearJuryOverrule() {
     this.machine.send({ type: EVENT_TYPES.CLEAR_JURY_OVERRULE });
+    this.decisionLog.record({ sessionId: this.sessionId, eventType: 'clear_jury_overrule' });
   }
 
   /** Start (or restart) the 1-minute lift timer for the current lifter. */

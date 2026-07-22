@@ -7,13 +7,21 @@ import {
   MessageBody,
   ConnectedSocket,
 } from '@nestjs/websockets';
-import { Logger, OnModuleDestroy } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
+import { SessionManager } from './session-manager.service';
 import { LiftService } from './lift.service';
 import { LiftSnapshot } from '../shared/lift.types';
-import { RefereePosition, Decision, ALL_REFEREE_POSITIONS, ALL_DECISIONS } from '../shared/lift.constants';
+import {
+  RefereePosition,
+  Decision,
+  ALL_REFEREE_POSITIONS,
+  ALL_DECISIONS,
+  SESSION_ID_PATTERN,
+} from '../shared/lift.constants';
 
 interface ClientData {
+  sessionId?: string;
   position?: RefereePosition;
 }
 
@@ -27,12 +35,20 @@ function isValidDecision(decision: string): decision is Decision {
   return ALL_DECISIONS.includes(decision as Decision);
 }
 
+/** Type guard to validate session/platform ID strings from client. */
+function isValidSessionId(sessionId: string): boolean {
+  return SESSION_ID_PATTERN.test(sessionId);
+}
+
 /**
  * WebSocket gateway for real-time lift state management.
  *
  * Handles WebSocket connections from referees, jury, and displays.
- * Validates incoming messages, forwards them to the service layer,
- * and broadcasts state updates to all connected clients.
+ * Each client joins a session/platform ID, which scopes it to a Socket.IO
+ * room and to that session's own LiftService instance - multiple platforms
+ * can run concurrently without seeing each other's state. Validates
+ * incoming messages, forwards them to the service layer, and broadcasts
+ * state updates to every client in that session's room.
  *
  * Supports optional token-based authentication via AUTH_TOKEN env variable.
  */
@@ -42,35 +58,16 @@ function isValidDecision(decision: string): decision is Decision {
     credentials: (process.env.CORS_ORIGIN || '*') !== '*',
   },
 })
-export class LiftGateway implements OnGatewayConnection, OnGatewayDisconnect, OnModuleDestroy {
+export class LiftGateway implements OnGatewayConnection, OnGatewayDisconnect {
   private readonly logger = new Logger(LiftGateway.name);
 
   @WebSocketServer()
   server!: Server;
 
   private clients = new Map<string, ClientData>();
-  private unsubscribe: (() => void) | undefined;
+  private subscribedSessions = new Set<string>();
 
-  /**
-   * Initialize gateway and subscribe to state machine changes.
-   * All state changes are automatically broadcast to connected clients.
-   */
-  constructor(private readonly liftService: LiftService) {
-    this.unsubscribe = this.liftService.subscribe((snapshot) => {
-      this.logger.log(`State changed: ${snapshot.state}, decisions: ${snapshot.context.decisions.size}`);
-      this.broadcastState(snapshot);
-    });
-  }
-
-  /**
-   * Cleanup subscription when module is destroyed.
-   * Prevents memory leaks on hot reload or shutdown.
-   */
-  onModuleDestroy() {
-    if (this.unsubscribe) {
-      this.unsubscribe();
-    }
-  }
+  constructor(private readonly sessionManager: SessionManager) {}
 
   /**
    * Handle new WebSocket connections.
@@ -98,14 +95,14 @@ export class LiftGateway implements OnGatewayConnection, OnGatewayDisconnect, On
 
   /**
    * Handle WebSocket disconnections.
-   * Notifies service if a referee disconnects so connection tracking stays accurate.
+   * Notifies the session's service if a referee disconnects so connection tracking stays accurate.
    *
    * @param client Socket.IO client connection
    */
   handleDisconnect(client: Socket) {
     const clientData = this.clients.get(client.id);
-    if (clientData?.position) {
-      this.liftService.refereeDisconnected(clientData.position);
+    if (clientData?.sessionId && clientData.position) {
+      this.sessionManager.getOrCreate(clientData.sessionId).refereeDisconnected(clientData.position);
       // No need to manually broadcast - the subscription will handle it
     }
     this.clients.delete(client.id);
@@ -113,29 +110,46 @@ export class LiftGateway implements OnGatewayConnection, OnGatewayDisconnect, On
   }
 
   /**
-   * Handle 'join' event when a client identifies their role.
+   * Handle 'join' event when a client identifies which session/platform it belongs to.
    * Sends current state to the new client and registers referee connections.
    *
    * @param client Socket.IO client
-   * @param data Contains optional position (left, chief, right) for referees
-   * @returns Success response or error if position is invalid
+   * @param data Contains the session/platform ID and an optional position (left, chief, right) for referees
+   * @returns Success response or error if the session ID or position is invalid
    */
   @SubscribeMessage('join')
-  async handleJoin(@ConnectedSocket() client: Socket, @MessageBody() data: { position?: string }) {
+  async handleJoin(@ConnectedSocket() client: Socket, @MessageBody() data: { sessionId?: string; position?: string }) {
+    if (!data.sessionId || !isValidSessionId(data.sessionId)) {
+      return { success: false, error: 'Invalid session ID' };
+    }
     if (data.position && !isValidPosition(data.position)) {
       return { success: false, error: 'Invalid position' };
     }
 
+    const sessionId = data.sessionId;
     const position = data.position as RefereePosition | undefined;
-    this.clients.set(client.id, { position });
+
+    // Leave a previously-joined session (e.g. the jury switching platforms) before joining the new one.
+    const previous = this.clients.get(client.id);
+    if (previous?.sessionId && previous.sessionId !== sessionId) {
+      client.leave(previous.sessionId);
+      if (previous.position) {
+        this.sessionManager.getOrCreate(previous.sessionId).refereeDisconnected(previous.position);
+      }
+    }
+
+    this.clients.set(client.id, { sessionId, position });
+    client.join(sessionId);
+
+    const liftService = this.sessionManager.getOrCreate(sessionId);
+    this.ensureSubscribed(sessionId, liftService);
 
     // Send current state to newly connected client
-    const state = this.liftService.getState();
-    client.emit('stateUpdate', this.serializeState(state));
+    client.emit('stateUpdate', this.serializeState(liftService.getState()));
 
     // Register referee connection after sending initial state
     if (position) {
-      this.liftService.refereeConnected(position);
+      liftService.refereeConnected(position);
     }
 
     return { success: true };
@@ -151,6 +165,8 @@ export class LiftGateway implements OnGatewayConnection, OnGatewayDisconnect, On
    */
   @SubscribeMessage('decision')
   async handleDecision(@ConnectedSocket() client: Socket, @MessageBody() data: { position: string; decision: string }) {
+    const liftService = this.requireSession(client);
+    if (!liftService) return { success: false, error: 'Not joined to a session' };
     if (!isValidPosition(data.position)) {
       return { success: false, error: 'Invalid position' };
     }
@@ -158,7 +174,7 @@ export class LiftGateway implements OnGatewayConnection, OnGatewayDisconnect, On
       return { success: false, error: 'Invalid decision' };
     }
 
-    this.liftService.makeDecision(data.position, data.decision);
+    liftService.makeDecision(data.position, data.decision);
     return { success: true };
   }
 
@@ -171,25 +187,33 @@ export class LiftGateway implements OnGatewayConnection, OnGatewayDisconnect, On
    */
   @SubscribeMessage('resetRefereeDecision')
   async handleResetDecision(@ConnectedSocket() client: Socket, @MessageBody() data: { position: string }) {
+    const liftService = this.requireSession(client);
+    if (!liftService) return { success: false, error: 'Not joined to a session' };
     if (!isValidPosition(data.position)) {
       return { success: false, error: 'Invalid position' };
     }
 
-    this.liftService.resetRefereeDecision(data.position);
+    liftService.resetRefereeDecision(data.position);
     return { success: true };
   }
 
   /** Handle 'revealDecisions' event to display the lights when all decisions are in. */
   @SubscribeMessage('revealDecisions')
-  async handleRevealDecisions() {
-    this.liftService.revealDecisions();
+  async handleRevealDecisions(@ConnectedSocket() client: Socket) {
+    const liftService = this.requireSession(client);
+    if (!liftService) return { success: false, error: 'Not joined to a session' };
+
+    liftService.revealDecisions();
     return { success: true };
   }
 
   /** Handle 'resetAll' event to clear all decisions and return to awaiting decisions. */
   @SubscribeMessage('resetAll')
-  async handleReset() {
-    this.liftService.resetAll();
+  async handleReset(@ConnectedSocket() client: Socket) {
+    const liftService = this.requireSession(client);
+    if (!liftService) return { success: false, error: 'Not joined to a session' };
+
+    liftService.resetAll();
     return { success: true };
   }
 
@@ -202,41 +226,63 @@ export class LiftGateway implements OnGatewayConnection, OnGatewayDisconnect, On
    */
   @SubscribeMessage('juryOverrule')
   async handleJuryOverrule(@ConnectedSocket() client: Socket, @MessageBody() data: { decision: string }) {
+    const liftService = this.requireSession(client);
+    if (!liftService) return { success: false, error: 'Not joined to a session' };
     if (!isValidDecision(data.decision)) {
       return { success: false, error: 'Invalid decision' };
     }
 
-    this.liftService.juryOverrule(data.decision);
+    liftService.juryOverrule(data.decision);
     return { success: true };
   }
 
   /** Handle 'clearJuryOverrule' event to exit jury overrule mode. */
   @SubscribeMessage('clearJuryOverrule')
-  async handleClearJuryOverrule() {
-    this.liftService.clearJuryOverrule();
+  async handleClearJuryOverrule(@ConnectedSocket() client: Socket) {
+    const liftService = this.requireSession(client);
+    if (!liftService) return { success: false, error: 'Not joined to a session' };
+
+    liftService.clearJuryOverrule();
     return { success: true };
   }
 
   /** Handle 'startTimer' event when the jury/table starts the 1-minute lift timer. */
   @SubscribeMessage('startTimer')
-  async handleStartTimer() {
-    this.liftService.startTimer();
+  async handleStartTimer(@ConnectedSocket() client: Socket) {
+    const liftService = this.requireSession(client);
+    if (!liftService) return { success: false, error: 'Not joined to a session' };
+
+    liftService.startTimer();
     return { success: true };
   }
 
   /** Handle 'stopTimer' event when the jury/table stops/resets the lift timer. */
   @SubscribeMessage('stopTimer')
-  async handleStopTimer() {
-    this.liftService.stopTimer();
+  async handleStopTimer(@ConnectedSocket() client: Socket) {
+    const liftService = this.requireSession(client);
+    if (!liftService) return { success: false, error: 'Not joined to a session' };
+
+    liftService.stopTimer();
     return { success: true };
   }
 
-  /**
-   * Broadcast state update to all connected clients.
-   * Called automatically after every state change via subscription.
-   */
-  private broadcastState(snapshot: LiftSnapshot) {
-    this.server.emit('stateUpdate', this.serializeState(snapshot));
+  /** Resolves the LiftService for the session a client has joined, or null if it hasn't joined one yet. */
+  private requireSession(client: Socket): LiftService | null {
+    const sessionId = this.clients.get(client.id)?.sessionId;
+    if (!sessionId) return null;
+
+    return this.sessionManager.getOrCreate(sessionId);
+  }
+
+  /** Subscribes to a session's state changes exactly once, broadcasting updates to its room. */
+  private ensureSubscribed(sessionId: string, liftService: LiftService) {
+    if (this.subscribedSessions.has(sessionId)) return;
+    this.subscribedSessions.add(sessionId);
+
+    liftService.subscribe((snapshot) => {
+      this.logger.log(`[${sessionId}] State changed: ${snapshot.state}, decisions: ${snapshot.context.decisions.size}`);
+      this.server.to(sessionId).emit('stateUpdate', this.serializeState(snapshot));
+    });
   }
 
   /**
