@@ -33,8 +33,9 @@ services:
       dockerfile: ./frontend/Dockerfile
       args:
         BACKEND_URL: ${BACKEND_URL:-http://localhost:3000}
-        AUTH_TOKEN: ${AUTH_TOKEN:-}
         FRONTEND_DEBUG: ${FRONTEND_DEBUG:-false}
+      secrets:
+        - auth_token
     container_name: openref-frontend
     ports:
       - '${FRONTEND_PORT:-8080}:80'
@@ -57,6 +58,10 @@ networks:
 volumes:
   # Persists the decision log (backend/data/decision-log.jsonl) across container recreations.
   openref-data:
+
+secrets:
+  auth_token:
+    environment: AUTH_TOKEN
 
 # Development override:
 # Create docker-compose.dev.yml with:

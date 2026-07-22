@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Stage 1: Build
 FROM node:20-alpine AS builder
 
@@ -16,13 +17,15 @@ RUN npm ci
 # Copy frontend source code
 COPY frontend ./frontend
 
-# Production backend origin + auth token, baked in at build time (Angular has no runtime env vars)
+# Production backend origin, baked in at build time (Angular has no runtime env vars)
 ARG BACKEND_URL=http://localhost:3000
-ARG AUTH_TOKEN=
 ARG FRONTEND_DEBUG=false
 
-# Setup environment file (use example as template), then inject production values
-RUN cp frontend/src/app/environments/environment.example.ts frontend/src/app/environments/environment.ts && \
+# AUTH_TOKEN comes in via a BuildKit secret mount, not an ARG, so it never appears
+# in the build log or `docker history` (compose: build.secrets + top-level secrets.environment)
+RUN --mount=type=secret,id=auth_token \
+    cp frontend/src/app/environments/environment.example.ts frontend/src/app/environments/environment.ts && \
+    AUTH_TOKEN="$(cat /run/secrets/auth_token 2>/dev/null || true)" && \
     sed -i \
       -e "s|backendUrl: '.*'|backendUrl: '${BACKEND_URL}'|" \
       -e "s|authToken: '.*'|authToken: '${AUTH_TOKEN}'|" \
