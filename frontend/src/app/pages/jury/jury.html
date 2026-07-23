@@ -47,6 +47,12 @@
               <div class="session-qr-card">
                 <div class="session-qr-label">{{ item.label }}</div>
                 <app-qr-code [value]="item.url" [size]="180"></app-qr-code>
+                <div class="session-qr-link-row">
+                  <span class="session-qr-link-text">{{ item.url }}</span>
+                  <button type="button" class="session-qr-copy-btn" (click)="copyLink(item.url)">
+                    {{ copiedUrl() === item.url ? 'Copied!' : 'Copy' }}
+                  </button>
+                </div>
               </div>
               <button type="button" class="qr-nav-btn" (click)="nextQrCode()" aria-label="Next QR code">›</button>
             </div>

@@ -5,6 +5,7 @@
   background-color: #000;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .display-header {
@@ -26,7 +27,8 @@
 }
 
 .display-timer {
-  font-size: 16rem;
+  /* Scales with the viewport instead of a fixed size, so it fits screens of any size/resolution. */
+  font-size: clamp(3rem, min(18vw, 25vh), 16rem);
 }
 
 .display-lights-wrapper {
@@ -44,7 +46,7 @@
 
 .display-lights {
   display: flex;
-  gap: 6rem;
+  gap: clamp(1rem, 5vw, 6rem);
   padding: 0 2rem;
   align-items: center;
   justify-content: center;
@@ -52,18 +54,18 @@
 }
 
 .display-lights-compact {
-  gap: 2rem;
+  gap: clamp(0.75rem, 3vw, 2rem);
 }
 
 .display-lights-compact .display-light-circle {
-  width: 7rem;
-  height: 7rem;
+  width: clamp(3rem, 9vw, 7rem);
+  height: clamp(3rem, 9vw, 7rem);
   border-width: 6px;
 }
 
 .display-lights-compact .display-light-indicator {
-  width: 1.5rem;
-  height: 1.5rem;
+  width: clamp(1rem, 2.5vw, 1.5rem);
+  height: clamp(1rem, 2.5vw, 1.5rem);
   bottom: -0.5rem;
   right: 0.75rem;
 }
@@ -82,8 +84,9 @@
 }
 
 .display-light-circle {
-  width: 28rem;
-  height: 28rem;
+  /* Scales with the viewport instead of a fixed size, so 3 circles + gaps always fit without overflowing. */
+  width: clamp(6rem, min(20vw, 22vh), 28rem);
+  height: clamp(6rem, min(20vw, 22vh), 28rem);
   border-radius: 50%;
   border: 12px solid #fff;
   display: flex;
@@ -96,8 +99,8 @@
   position: absolute;
   bottom: -1rem;
   right: 2rem;
-  width: 3rem;
-  height: 3rem;
+  width: clamp(1.5rem, 4vw, 3rem);
+  height: clamp(1.5rem, 4vw, 3rem);
   border-radius: 50%;
   border: 3px solid #fff;
 }
@@ -195,4 +198,21 @@
 
 .display-sound-unlock-btn:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+.display-fullscreen-btn {
+  position: fixed;
+  bottom: 1rem;
+  left: 1rem;
+  background-color: rgba(17, 24, 39, 0.8);
+  color: white;
+  border: 1px solid #374151;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.display-fullscreen-btn:hover {
+  background-color: rgba(31, 41, 55, 0.9);
 }

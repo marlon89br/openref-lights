@@ -164,6 +164,50 @@ describe('JuryComponent', () => {
     expect(mockLiftService.disconnect).toHaveBeenCalled();
   });
 
+  describe('copyLink', () => {
+    let writeText: ReturnType<typeof vi.fn>;
+    let originalClipboard: unknown;
+
+    beforeEach(() => {
+      writeText = vi.fn().mockResolvedValue(undefined);
+      originalClipboard = navigator.clipboard;
+      Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+    });
+
+    afterEach(() => {
+      Object.defineProperty(navigator, 'clipboard', { value: originalClipboard, configurable: true });
+      vi.useRealTimers();
+    });
+
+    it('should copy the link to the clipboard', async () => {
+      await component.copyLink('https://example.com/display/ABC123');
+      expect(writeText).toHaveBeenCalledWith('https://example.com/display/ABC123');
+    });
+
+    it('should show a "Copied!" confirmation for the copied URL', async () => {
+      await component.copyLink('https://example.com/display/ABC123');
+      expect(component.copiedUrl()).toBe('https://example.com/display/ABC123');
+    });
+
+    it('should clear the confirmation after the timeout', async () => {
+      vi.useFakeTimers();
+
+      await component.copyLink('https://example.com/display/ABC123');
+      expect(component.copiedUrl()).toBe('https://example.com/display/ABC123');
+
+      vi.advanceTimersByTime(2000);
+      expect(component.copiedUrl()).toBeNull();
+    });
+
+    it('should not set the confirmation when the clipboard write fails', async () => {
+      writeText.mockRejectedValue(new Error('denied'));
+
+      await component.copyLink('https://example.com/display/ABC123');
+
+      expect(component.copiedUrl()).toBeNull();
+    });
+  });
+
   it('should expose state from service', () => {
     expect(component.state).toBe(mockLiftService.state);
   });
