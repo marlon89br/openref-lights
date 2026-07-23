@@ -7,6 +7,7 @@ import { RefereePosition, Decision, TimerStatus } from '../../models/lift.model'
 import { LiftTimerComponent } from '../../components/lift-timer/lift-timer';
 import { QrCodeComponent } from '../../components/qr-code/qr-code';
 import { generateSessionId, isValidSessionId, normalizeSessionId } from '../../utils/session-id';
+import { environment } from '../../environments/environment';
 import { interval } from 'rxjs';
 import { takeWhile, tap, finalize } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -163,7 +164,11 @@ export class JuryComponent implements OnInit, OnDestroy {
 
     if (!sessionId) return '';
 
-    return `${window.location.origin}/${[...pathSegments, sessionId].join('/')}`;
+    // Prefer the configured public URL (set at deploy time) over window.location.origin, since the
+    // jury device may be browsing via "localhost" or a LAN IP that other devices can't reach/scan.
+    const origin = (environment.frontendUrl || window.location.origin).replace(/\/+$/, '');
+
+    return `${origin}/${[...pathSegments, sessionId].join('/')}`;
   }
 
   getDecision(position: RefereePosition): Decision | undefined {

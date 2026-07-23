@@ -33,6 +33,7 @@ services:
       dockerfile: ./frontend/Dockerfile
       args:
         BACKEND_URL: ${BACKEND_URL:-http://localhost:3000}
+        FRONTEND_URL: ${FRONTEND_URL:-}
         FRONTEND_DEBUG: ${FRONTEND_DEBUG:-false}
       secrets:
         - auth_token

@@ -4,6 +4,7 @@ import { LiftService } from '../../services/lift.service';
 import { AudioBeepService } from '../../services/audio-beep.service';
 import { ActivatedRoute, ActivatedRouteSnapshot, Router, convertToParamMap } from '@angular/router';
 import { LiftStateType, Decision, RefereePosition, TimerStatus } from '../../models/lift.model';
+import { environment } from '../../environments/environment';
 import { signal, WritableSignal } from '@angular/core';
 import { LiftState } from '../../models/lift.model';
 import { of } from 'rxjs';
@@ -107,6 +108,33 @@ describe('JuryComponent', () => {
     expect(component.refereeUrls().left).toContain(`/referee/left/${SESSION_ID}`);
     expect(component.refereeUrls().chief).toContain(`/referee/chief/${SESSION_ID}`);
     expect(component.refereeUrls().right).toContain(`/referee/right/${SESSION_ID}`);
+  });
+
+  describe('join URL origin', () => {
+    afterEach(() => {
+      environment.frontendUrl = '';
+    });
+
+    it('should fall back to window.location.origin when frontendUrl is not configured', () => {
+      component.ngOnInit();
+
+      expect(component.displayUrl()).toBe(`${window.location.origin}/display/${SESSION_ID}`);
+    });
+
+    it('should prefer the configured frontendUrl over window.location.origin', () => {
+      environment.frontendUrl = 'https://meet.example.com';
+      component.ngOnInit();
+
+      expect(component.displayUrl()).toBe(`https://meet.example.com/display/${SESSION_ID}`);
+      expect(component.refereeUrls().left).toBe(`https://meet.example.com/referee/left/${SESSION_ID}`);
+    });
+
+    it('should strip a trailing slash from the configured frontendUrl', () => {
+      environment.frontendUrl = 'https://meet.example.com/';
+      component.ngOnInit();
+
+      expect(component.displayUrl()).toBe(`https://meet.example.com/display/${SESSION_ID}`);
+    });
   });
 
   it('should start with the session panel collapsed', () => {

@@ -19,6 +19,9 @@ COPY frontend ./frontend
 
 # Production backend origin, baked in at build time (Angular has no runtime env vars)
 ARG BACKEND_URL=http://localhost:3000
+# Public URL for jury-generated join links/QR codes (e.g. https://meet.example.com).
+# Leave empty to fall back to the browser's own window.location.origin at runtime.
+ARG FRONTEND_URL=
 ARG FRONTEND_DEBUG=false
 
 # AUTH_TOKEN comes in via a BuildKit secret mount, not an ARG, so it never appears
@@ -28,6 +31,7 @@ RUN --mount=type=secret,id=auth_token \
     AUTH_TOKEN="$(cat /run/secrets/auth_token 2>/dev/null || true)" && \
     sed -i \
       -e "s|backendUrl: '.*'|backendUrl: '${BACKEND_URL}'|" \
+      -e "s|frontendUrl: '.*'|frontendUrl: '${FRONTEND_URL}'|" \
       -e "s|authToken: '.*'|authToken: '${AUTH_TOKEN}'|" \
       -e "s|debug: .*|debug: ${FRONTEND_DEBUG},|" \
       frontend/src/app/environments/environment.ts
