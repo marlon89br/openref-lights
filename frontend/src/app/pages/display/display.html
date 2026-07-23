@@ -43,5 +43,11 @@
         </button>
       </div>
     }
+
+    @if (isFullscreenSupported) {
+      <button type="button" class="display-fullscreen-btn" (click)="toggleFullscreen()">
+        {{ isFullscreen() ? '⤢ Exit Fullscreen' : '⛶ Fullscreen' }}
+      </button>
+    }
   }
 </div>

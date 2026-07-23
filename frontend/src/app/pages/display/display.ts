@@ -9,6 +9,16 @@ import { SessionIdPromptComponent } from '../../components/session-id-prompt/ses
 import { isValidSessionId } from '../../utils/session-id';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 
+/** Safari (including iPadOS) still ships the older webkit-prefixed Fullscreen API alongside the standard one. */
+interface FullscreenDocument extends Document {
+  webkitFullscreenElement?: Element | null;
+  webkitExitFullscreen?: () => Promise<void>;
+}
+
+interface FullscreenElement extends HTMLElement {
+  webkitRequestFullscreen?: () => Promise<void>;
+}
+
 @Component({
   selector: 'app-display',
   imports: [CommonModule, LiftTimerComponent, SessionIdPromptComponent],
@@ -51,6 +61,19 @@ export class DisplayComponent implements OnInit, OnDestroy {
   /** Whether the one-time "tap to enable sound" prompt has been dismissed.
    *  Browsers block audio until a user gesture occurs on this page. */
   soundUnlocked = signal(false);
+
+  /** Whether the browser can go fullscreen at all - hides the button if not (e.g. older iPhone Safari). */
+  readonly isFullscreenSupported = !!(
+    document.documentElement.requestFullscreen || (document.documentElement as FullscreenElement).webkitRequestFullscreen
+  );
+
+  isFullscreen = signal(false);
+
+  private readonly handleFullscreenChange = () => {
+    const doc = document as FullscreenDocument;
+
+    this.isFullscreen.set(!!(document.fullscreenElement || doc.webkitFullscreenElement));
+  };
 
   constructor() {
     // Use effect to handle state transitions
@@ -105,11 +128,38 @@ export class DisplayComponent implements OnInit, OnDestroy {
       this.liftService.disconnect();
       this.liftService.connect(sessionId);
     });
+
+    document.addEventListener('fullscreenchange', this.handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', this.handleFullscreenChange);
   }
 
   ngOnDestroy() {
     this.clearTimers();
     this.liftService.disconnect();
+    document.removeEventListener('fullscreenchange', this.handleFullscreenChange);
+    document.removeEventListener('webkitfullscreenchange', this.handleFullscreenChange);
+  }
+
+  toggleFullscreen() {
+    if (this.isFullscreen()) {
+      const doc = document as FullscreenDocument;
+
+      if (document.exitFullscreen) {
+        void document.exitFullscreen();
+      } else if (doc.webkitExitFullscreen) {
+        void doc.webkitExitFullscreen();
+      }
+
+      return;
+    }
+
+    const el = document.documentElement as FullscreenElement;
+
+    if (el.requestFullscreen) {
+      void el.requestFullscreen();
+    } else if (el.webkitRequestFullscreen) {
+      void el.webkitRequestFullscreen();
+    }
   }
 
   onSessionIdSubmitted(sessionId: string) {

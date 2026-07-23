@@ -7,6 +7,7 @@ import { RefereePosition, Decision, TimerStatus } from '../../models/lift.model'
 import { LiftTimerComponent } from '../../components/lift-timer/lift-timer';
 import { QrCodeComponent } from '../../components/qr-code/qr-code';
 import { generateSessionId, isValidSessionId, normalizeSessionId } from '../../utils/session-id';
+import { environment } from '../../environments/environment';
 import { interval } from 'rxjs';
 import { takeWhile, tap, finalize } from 'rxjs/operators';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -16,6 +17,9 @@ const COUNTDOWN_DURATION_SECONDS = 1;
 
 /** Countdown tick interval in milliseconds. */
 const COUNTDOWN_TICK_MS = 100;
+
+/** How long the "Copied!" confirmation stays visible after copying a link. */
+const COPY_CONFIRMATION_MS = 2000;
 
 @Component({
   selector: 'app-jury',
@@ -65,6 +69,10 @@ export class JuryComponent implements OnInit, OnDestroy {
   ]);
   currentQrItem = computed(() => this.qrItems()[this.qrIndex()]);
 
+  /** The URL last copied via copyLink(), shown as a brief "Copied!" confirmation. */
+  copiedUrl = signal<string | null>(null);
+  private copyConfirmationTimer?: ReturnType<typeof setTimeout>;
+
   // Computed signal for jury overrule
   hasJuryOverrule = computed(() => !!this.liftService.state()?.context.juryOverrule);
 
@@ -102,6 +110,7 @@ export class JuryComponent implements OnInit, OnDestroy {
 
   ngOnDestroy() {
     this.liftService.disconnect();
+    clearTimeout(this.copyConfirmationTimer);
   }
 
   onSessionIdInput(event: Event) {
@@ -137,12 +146,29 @@ export class JuryComponent implements OnInit, OnDestroy {
     this.qrIndex.update((i) => (i - 1 + total) % total);
   }
 
+  async copyLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Clipboard API may be unavailable (e.g. no secure context) - the link text is still visible to copy by hand.
+      return;
+    }
+
+    this.copiedUrl.set(url);
+    clearTimeout(this.copyConfirmationTimer);
+    this.copyConfirmationTimer = setTimeout(() => this.copiedUrl.set(null), COPY_CONFIRMATION_MS);
+  }
+
   private joinUrl(...pathSegments: string[]): string {
     const sessionId = this.sessionId();
 
     if (!sessionId) return '';
 
-    return `${window.location.origin}/${[...pathSegments, sessionId].join('/')}`;
+    // Prefer the configured public URL (set at deploy time) over window.location.origin, since the
+    // jury device may be browsing via "localhost" or a LAN IP that other devices can't reach/scan.
+    const origin = (environment.frontendUrl || window.location.origin).replace(/\/+$/, '');
+
+    return `${origin}/${[...pathSegments, sessionId].join('/')}`;
   }
 
   getDecision(position: RefereePosition): Decision | undefined {
