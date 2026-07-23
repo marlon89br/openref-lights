@@ -12,7 +12,7 @@
 .lift-timer-value {
   font-size: 1em;
   font-weight: bold;
-  font-family: 'Courier New', monospace;
+  font-family: 'Georgia', 'Times New Roman', Times, serif;
   color: #fff;
   letter-spacing: 0.05em;
   transition: color 0.3s ease;
