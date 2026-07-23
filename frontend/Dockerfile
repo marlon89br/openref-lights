@@ -17,18 +17,20 @@ RUN npm ci
 # Copy frontend source code
 COPY frontend ./frontend
 
-# Production backend origin, baked in at build time (Angular has no runtime env vars)
+# Production backend origin + auth token, baked in at build time (Angular has no runtime
+# env vars). AUTH_TOKEN is an ARG (not a secret mount) deliberately: BuildKit secret
+# mounts are excluded from the cache key, so a rebuild without --no-cache can silently
+# reuse a layer built with a stale token. ARGs are hashed into the cache key, so any
+# change here reliably busts the cache. Trade-off: the value is visible in build logs
+# and `docker history` — rotate AUTH_TOKEN if a build log is ever shared.
 ARG BACKEND_URL=http://localhost:3000
 # Public URL for jury-generated join links/QR codes (e.g. https://meet.example.com).
 # Leave empty to fall back to the browser's own window.location.origin at runtime.
 ARG FRONTEND_URL=
+ARG AUTH_TOKEN=
 ARG FRONTEND_DEBUG=false
 
-# AUTH_TOKEN comes in via a BuildKit secret mount, not an ARG, so it never appears
-# in the build log or `docker history` (compose: build.secrets + top-level secrets.environment)
-RUN --mount=type=secret,id=auth_token \
-    cp frontend/src/app/environments/environment.example.ts frontend/src/app/environments/environment.ts && \
-    AUTH_TOKEN="$(cat /run/secrets/auth_token 2>/dev/null || true)" && \
+RUN cp frontend/src/app/environments/environment.example.ts frontend/src/app/environments/environment.ts && \
     sed -i \
       -e "s|backendUrl: '.*'|backendUrl: '${BACKEND_URL}'|" \
       -e "s|frontendUrl: '.*'|frontendUrl: '${FRONTEND_URL}'|" \
