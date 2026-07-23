@@ -1,10 +1,14 @@
 import { TestBed } from '@angular/core/testing';
 import { LiftService } from './lift.service';
+import { SOCKET_IO_FACTORY } from './socket-io-factory';
 import { LiftStateType, Decision, RefereePosition } from '../models/lift.model';
 
 const SESSION_ID = 'SESSION1';
 
-// Mock socket.io-client
+// Fake socket.io-client Socket, injected via SOCKET_IO_FACTORY instead of module-level mocking.
+// See socket-io-factory.ts for why: this project's Vitest runner shares one module registry
+// across all spec files (isolate: false), which makes `vi.mock('socket.io-client', ...)`
+// unreliable - DI substitution has no such dependency on module load order/timing.
 const mockSocket = {
   connected: false,
   id: 'mock-socket-id',
@@ -13,17 +17,18 @@ const mockSocket = {
   disconnect: vi.fn(),
 };
 
-vi.mock('socket.io-client', () => ({
-  io: vi.fn(() => mockSocket),
-}));
+const mockIoFactory = vi.fn(() => mockSocket);
 
 describe('LiftService', () => {
   let service: LiftService;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({});
+    TestBed.configureTestingModule({
+      providers: [{ provide: SOCKET_IO_FACTORY, useValue: mockIoFactory }],
+    });
     service = TestBed.inject(LiftService);
     vi.clearAllMocks();
+    mockSocket.connected = false;
   });
 
   afterEach(() => {

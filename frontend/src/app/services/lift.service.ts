@@ -1,12 +1,14 @@
-import { Injectable, signal, computed } from '@angular/core';
-import { io, ManagerOptions, Socket, SocketOptions } from 'socket.io-client';
+import { Injectable, inject, signal, computed } from '@angular/core';
+import { ManagerOptions, Socket, SocketOptions } from 'socket.io-client';
 import { Decision, LiftState, LiftStateType, RefereePosition } from '../models/lift.model';
 import { environment } from '../environments/environment';
+import { SOCKET_IO_FACTORY } from './socket-io-factory';
 
 @Injectable({
   providedIn: 'root',
 })
 export class LiftService {
+  private readonly createSocket = inject(SOCKET_IO_FACTORY);
   private socket: Socket | null = null;
 
   private _state = signal<LiftState | null>(null);
@@ -47,7 +49,7 @@ export class LiftService {
     }
 
     this.debug('Connecting to:', this.BACKEND_URL, 'session:', sessionId, 'as:', position ?? 'display/control client');
-    this.socket = io(this.BACKEND_URL, socketOptions);
+    this.socket = this.createSocket(this.BACKEND_URL, socketOptions);
 
     this.socket.on('connect', () => {
       this.debug('Connected to server, socket ID:', this.socket?.id);
